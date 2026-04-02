@@ -38,7 +38,12 @@ html {
 
 body {
   background: var(--background);
-  background-image: radial-gradient(ellipse at 50% 0%, rgba(0,255,136,0.03) 0%, transparent 60%);
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(0,255,136,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(59,130,246,0.025) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(139,92,246,0.02) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.008) 0%, transparent 100%);
+  background-attachment: fixed;
   color: var(--text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   -webkit-font-smoothing: antialiased;
