@@ -54,7 +54,12 @@ export default function Header() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
-          <Zap className="h-5 w-5 text-[#00ff88] group-hover:animate-neon-pulse" />
+          <img
+            src="/logo.png"
+            alt="Rush"
+            className="h-8 w-8 rounded-lg group-hover:scale-110 transition-transform duration-200"
+            style={{ filter: "drop-shadow(0 0 6px rgba(0,255,136,0.4))" }}
+          />
           <span
             className="text-xl font-black tracking-wider neon-green"
             style={{ letterSpacing: "0.15em" }}

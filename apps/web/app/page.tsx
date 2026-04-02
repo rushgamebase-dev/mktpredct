@@ -227,14 +227,22 @@ export default function HomePage() {
         className="mb-5"
       >
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-              <Activity className="h-6 w-6" style={{ color: "#00ff88" }} />
-              Live Markets
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Real-time prediction arena
-            </p>
+          <div className="flex items-center gap-3">
+            <img
+              src="/mascot.png"
+              alt="Rush mascot"
+              className="hidden sm:block h-16 w-auto opacity-90"
+              style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))" }}
+            />
+            <div>
+              <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                <Activity className="h-6 w-6" style={{ color: "#00ff88" }} />
+                Live Markets
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Real-time prediction arena
+              </p>
+            </div>
           </div>
           {/* Tension stats */}
           {heroMarkets.length > 0 && (
