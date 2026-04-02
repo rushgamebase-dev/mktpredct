@@ -286,23 +286,12 @@ export default function HomePage() {
       >
         {/* Chart */}
         <div
-          className="lg:col-span-7 rounded-xl overflow-hidden relative"
+          className="lg:col-span-7 rounded-xl overflow-hidden"
           style={{
             background: "var(--surface, #111)",
             border: "1px solid var(--border, rgba(255,255,255,0.08))",
           }}
         >
-          {/* Mascot overlay — bottom-left corner, looking right at the chart */}
-          <img
-            src="/mascot.png"
-            alt=""
-            className="hidden lg:block absolute bottom-2 left-2 z-10 pointer-events-none select-none"
-            style={{
-              height: 180,
-              opacity: 0.7,
-              filter: "drop-shadow(0 2px 12px rgba(0,0,0,0.7))",
-            }}
-          />
           {heroMarkets.length > 0 ? (
             <HeroChart
               markets={heroMarkets}
