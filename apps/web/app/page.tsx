@@ -284,27 +284,25 @@ export default function HomePage() {
         custom={2}
         className="mb-6 grid grid-cols-1 lg:grid-cols-10 gap-4"
       >
-        {/* Mascot — outside chart, looking right toward the graph */}
-        <div className="hidden lg:flex items-end lg:col-span-2 pointer-events-none select-none justify-center">
-          <img
-            src="/mascot.png"
-            alt=""
-            style={{
-              height: 340,
-              opacity: 0.85,
-              filter: "drop-shadow(0 4px 20px rgba(0,0,0,0.6))",
-            }}
-          />
-        </div>
-
         {/* Chart */}
         <div
-          className="lg:col-span-5 rounded-xl overflow-hidden"
+          className="lg:col-span-7 rounded-xl overflow-hidden relative"
           style={{
             background: "var(--surface, #111)",
             border: "1px solid var(--border, rgba(255,255,255,0.08))",
           }}
         >
+          {/* Mascot overlay — bottom-left corner, looking right at the chart */}
+          <img
+            src="/mascot.png"
+            alt=""
+            className="hidden lg:block absolute bottom-2 left-2 z-10 pointer-events-none select-none"
+            style={{
+              height: 180,
+              opacity: 0.7,
+              filter: "drop-shadow(0 2px 12px rgba(0,0,0,0.7))",
+            }}
+          />
           {heroMarkets.length > 0 ? (
             <HeroChart
               markets={heroMarkets}
