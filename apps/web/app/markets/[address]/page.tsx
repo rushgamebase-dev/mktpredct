@@ -15,9 +15,12 @@ import OddsBar from "@/components/market/OddsBar";
 import BetForm from "@/components/market/BetForm";
 import PositionsPanel from "@/components/market/PositionsPanel";
 import ActivityFeed from "@/components/market/ActivityFeed";
+import MarketComments from "@/components/market/MarketComments";
+import RelatedMarkets from "@/components/market/RelatedMarkets";
 import { formatEth, formatDeadline, timeAgo } from "@/lib/format";
 import { fadeInUp } from "@/lib/animations";
 import { useActivity } from "@/hooks/useActivity";
+import { useMarkets } from "@/hooks/useMarkets";
 import { ArrowLeft, Clock, Users, Coins, Trophy, Zap, Timer } from "lucide-react";
 
 export default function MarketDetailPage() {
@@ -27,6 +30,8 @@ export default function MarketDetailPage() {
 
   const { data: market, isLoading: marketLoading, error: marketError } = useMarket(address);
   const { data: chartData } = useChart(address);
+  const { data: allMarketsData } = useMarkets({ page: 1, pageSize: 20, status: "all" });
+  const allMarkets = allMarketsData?.markets ?? [];
 
   // WebSocket: invalidate queries on real-time updates
   const handleWsMessage = useCallback(
@@ -465,6 +470,13 @@ export default function MarketDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Community comments */}
+          <MarketComments
+            market={market}
+            labels={market.labels}
+            colors={colors}
+          />
         </div>
 
         {/* Right column: BetForm + Positions + Activity */}
@@ -491,6 +503,14 @@ export default function MarketDetailPage() {
           />
         </div>
       </div>
+
+      {/* Related markets -- full width */}
+      {allMarkets.length > 0 && (
+        <RelatedMarkets
+          currentAddress={address}
+          markets={allMarkets}
+        />
+      )}
     </motion.div>
   );
 }

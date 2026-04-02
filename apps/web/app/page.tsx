@@ -9,6 +9,7 @@ import { MarketCardSkeletonGrid } from "@/components/market/MarketCardSkeleton";
 import HeroChart from "@/components/home/HeroChart";
 import MarketSelector from "@/components/home/MarketSelector";
 import LiveActivitySidebar from "@/components/home/LiveActivitySidebar";
+import NewsSidebar from "@/components/home/NewsSidebar";
 import { staggerContainer, tabContent } from "@/lib/animations";
 import { TrendingUp, CheckCircle, LayoutGrid, Zap, Activity } from "lucide-react";
 import { formatEth } from "@/lib/format";
@@ -486,9 +487,19 @@ export default function HomePage() {
         </motion.div>
       )}
 
+      {/* ---- NEWS SIDEBAR ---- */}
+      {markets.length > 0 && (
+        <motion.div
+          variants={sectionVariants} initial="hidden" animate="visible" custom={6}
+          className="mb-6"
+        >
+          <NewsSidebar markets={markets} />
+        </motion.div>
+      )}
+
       {/* ---- HOW IT WORKS ---- */}
       <motion.div
-        variants={sectionVariants} initial="hidden" animate="visible" custom={6}
+        variants={sectionVariants} initial="hidden" animate="visible" custom={7}
         className="mb-8"
       >
         <div className="rounded-xl p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)" }}>
@@ -514,7 +525,7 @@ export default function HomePage() {
         variants={sectionVariants}
         initial="hidden"
         animate="visible"
-        custom={7}
+        custom={8}
         className="mb-4 flex items-center justify-between"
       >
         <h2 className="text-lg font-bold text-white">All Markets</h2>
