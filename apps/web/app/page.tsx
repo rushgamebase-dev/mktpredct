@@ -438,94 +438,12 @@ export default function HomePage() {
         </div>
       </motion.div>
 
-      {/* ---- QUICK BET ---- */}
-      {heroMarkets.filter((m) => m.status === "open" && m.outcomeCount === 2).length > 0 && (
-        <motion.div
-          variants={sectionVariants} initial="hidden" animate="visible" custom={5}
-          className="mb-6"
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg">⚡</span>
-            <h2 className="text-lg font-bold text-white">Quick Bet</h2>
-          </div>
-          <p className="text-[11px] text-gray-500 mb-3">Instant bets — no need to open market page</p>
-          <div className="space-y-2">
-            {heroMarkets
-              .filter((m) => m.status === "open" && m.outcomeCount === 2)
-              .slice(0, 3)
-              .map((m) => {
-                const yes = Math.round(m.odds[0] ?? 50);
-                const no = Math.round(m.odds[1] ?? 50);
-                return (
-                  <div
-                    key={m.address}
-                    className="flex items-center gap-3 rounded-xl p-3"
-                    style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-                  >
-                    <span className="flex-1 text-sm font-semibold text-gray-200 line-clamp-1">{m.question}</span>
-                    <a
-                      href={`/markets/${m.address}`}
-                      className="flex items-center gap-2 shrink-0"
-                    >
-                      <span className="rounded-lg px-4 py-2 text-xs font-black transition-all hover:scale-110 cursor-pointer"
-                        style={{ background: "#3B82F618", color: "#3B82F6", border: "1px solid #3B82F640", boxShadow: "0 0 0 transparent" }}
-                        onMouseEnter={(e) => { (e.target as HTMLElement).style.boxShadow = "0 0 16px #3B82F630"; }}
-                        onMouseLeave={(e) => { (e.target as HTMLElement).style.boxShadow = "none"; }}>
-                        {m.labels[0]} {yes}%
-                      </span>
-                      <span className="rounded-lg px-4 py-2 text-xs font-black transition-all hover:scale-110 cursor-pointer"
-                        style={{ background: "#EF444418", color: "#EF4444", border: "1px solid #EF444440", boxShadow: "0 0 0 transparent" }}
-                        onMouseEnter={(e) => { (e.target as HTMLElement).style.boxShadow = "0 0 16px #EF444430"; }}
-                        onMouseLeave={(e) => { (e.target as HTMLElement).style.boxShadow = "none"; }}>
-                        {m.labels[1]} {no}%
-                      </span>
-                    </a>
-                  </div>
-                );
-              })}
-          </div>
-        </motion.div>
-      )}
-
-      {/* ---- NEWS SIDEBAR ---- */}
-      {markets.length > 0 && (
-        <motion.div
-          variants={sectionVariants} initial="hidden" animate="visible" custom={6}
-          className="mb-6"
-        >
-          <NewsSidebar markets={markets} />
-        </motion.div>
-      )}
-
-      {/* ---- HOW IT WORKS ---- */}
-      <motion.div
-        variants={sectionVariants} initial="hidden" animate="visible" custom={7}
-        className="mb-8"
-      >
-        <div className="rounded-xl p-6" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)" }}>
-          <h3 className="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wider">How it works</h3>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            {[
-              { icon: "🔗", title: "Connect", desc: "Link your wallet" },
-              { icon: "🎯", title: "Pick", desc: "Choose an outcome" },
-              { icon: "💰", title: "Win", desc: "Claim your payout" },
-            ].map((step, i) => (
-              <div key={i} className="group cursor-default">
-                <div className="text-2xl mb-1 transition-transform duration-200 group-hover:scale-125">{step.icon}</div>
-                <div className="text-xs font-bold text-gray-300">{step.title}</div>
-                <div className="text-[10px] text-gray-500">{step.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
-
       {/* ---- Section: "All Markets" heading ---- */}
       <motion.div
         variants={sectionVariants}
         initial="hidden"
         animate="visible"
-        custom={8}
+        custom={5}
         className="mb-4 flex items-center justify-between"
       >
         <h2 className="text-lg font-bold text-white">All Markets</h2>
