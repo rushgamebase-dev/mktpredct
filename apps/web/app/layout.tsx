@@ -1,6 +1,7 @@
 import "./globals.css";
 import Providers from "./providers";
 import Header from "@/components/layout/Header";
+import NewsTicker from "@/components/layout/NewsTicker";
 
 export const metadata = {
   title: "Rush Markets -- Prediction Markets on Base",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body suppressHydrationWarning>
         <Providers>
           <Header />
+          <NewsTicker />
           <main className="mx-auto max-w-7xl px-4 py-6">
             {children}
           </main>
