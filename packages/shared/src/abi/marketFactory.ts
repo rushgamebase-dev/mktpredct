@@ -1,0 +1,113 @@
+export const MarketFactoryABI = [
+	{
+		type: 'constructor',
+		inputs: [
+			{ name: '_feeRecipient', type: 'address' },
+			{ name: '_signer', type: 'address' },
+			{ name: '_feeBps', type: 'uint256' },
+		],
+		stateMutability: 'nonpayable',
+	},
+	{
+		type: 'function',
+		name: 'createMarket',
+		inputs: [
+			{ name: 'question', type: 'string' },
+			{ name: 'labels', type: 'string[]' },
+			{ name: 'deadline', type: 'uint256' },
+			{ name: 'gracePeriod', type: 'uint256' },
+		],
+		outputs: [{ name: '', type: 'address' }],
+		stateMutability: 'nonpayable',
+	},
+	{
+		type: 'function',
+		name: 'feeBps',
+		inputs: [],
+		outputs: [{ name: '', type: 'uint256' }],
+		stateMutability: 'view',
+	},
+	{
+		type: 'function',
+		name: 'feeRecipient',
+		inputs: [],
+		outputs: [{ name: '', type: 'address' }],
+		stateMutability: 'view',
+	},
+	{
+		type: 'function',
+		name: 'marketCount',
+		inputs: [],
+		outputs: [{ name: '', type: 'uint256' }],
+		stateMutability: 'view',
+	},
+	{
+		type: 'function',
+		name: 'markets',
+		inputs: [{ name: '', type: 'uint256' }],
+		outputs: [{ name: '', type: 'address' }],
+		stateMutability: 'view',
+	},
+	{
+		type: 'function',
+		name: 'owner',
+		inputs: [],
+		outputs: [{ name: '', type: 'address' }],
+		stateMutability: 'view',
+	},
+	{
+		type: 'function',
+		name: 'setFeeRecipient',
+		inputs: [{ name: '_feeRecipient', type: 'address' }],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+	{
+		type: 'function',
+		name: 'setSigner',
+		inputs: [{ name: '_signer', type: 'address' }],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+	{
+		type: 'function',
+		name: 'signer',
+		inputs: [],
+		outputs: [{ name: '', type: 'address' }],
+		stateMutability: 'view',
+	},
+	{
+		type: 'function',
+		name: 'transferOwnership',
+		inputs: [{ name: 'newOwner', type: 'address' }],
+		outputs: [],
+		stateMutability: 'nonpayable',
+	},
+	{
+		type: 'event',
+		name: 'FeeRecipientUpdated',
+		inputs: [
+			{ name: 'oldRecipient', type: 'address', indexed: true },
+			{ name: 'newRecipient', type: 'address', indexed: true },
+		],
+	},
+	{
+		type: 'event',
+		name: 'MarketCreated',
+		inputs: [
+			{ name: 'market', type: 'address', indexed: true },
+			{ name: 'outcomeCount', type: 'uint256', indexed: false },
+			{ name: 'labels', type: 'string[]', indexed: false },
+			{ name: 'deadline', type: 'uint256', indexed: false },
+			{ name: 'gracePeriod', type: 'uint256', indexed: false },
+		],
+	},
+	{
+		type: 'event',
+		name: 'SignerUpdated',
+		inputs: [
+			{ name: 'oldSigner', type: 'address', indexed: true },
+			{ name: 'newSigner', type: 'address', indexed: true },
+		],
+	},
+] as const

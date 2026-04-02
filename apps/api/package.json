@@ -1,0 +1,30 @@
+{
+	"name": "@rush/api",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "tsx watch src/index.ts",
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"check": "tsc --noEmit",
+		"clean": "rm -rf dist"
+	},
+	"dependencies": {
+		"@hono/node-server": "^1.14.0",
+		"@hono/node-ws": "^1.1.0",
+		"@rush/shared": "workspace:*",
+		"dotenv": "^17.4.0",
+		"drizzle-orm": "^0.44.0",
+		"hono": "^4.7.0",
+		"postgres": "^3.4.0",
+		"viem": "^2.23.0",
+		"ws": "^8.18.0",
+		"zod": "^3.24.0"
+	},
+	"devDependencies": {
+		"@types/ws": "^8.5.0",
+		"tsx": "^4.19.0",
+		"typescript": "^5.7.0"
+	}
+}

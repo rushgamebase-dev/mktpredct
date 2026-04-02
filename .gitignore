@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
+.env
+.env.local
+.env.production
+.env.*.local
+*.log
+coverage/
+.DS_Store
+tmp/
+.next/
+contracts/out/
+contracts/cache/
+contracts/broadcast/
