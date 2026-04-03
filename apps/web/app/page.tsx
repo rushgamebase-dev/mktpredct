@@ -99,11 +99,14 @@ export default function HomePage() {
         });
         break;
       case "odds_update":
-        // Invalidate only the affected market in the list
+        // Invalidate the specific market AND the markets list
         queryClient.invalidateQueries({ queryKey: ["market", addr] });
+        queryClient.invalidateQueries({ queryKey: ["markets"] });
         break;
       case "status_change":
-        // Market resolved/cancelled — refetch list
+        queryClient.invalidateQueries({ queryKey: ["markets"] });
+        break;
+      case "counter_update":
         queryClient.invalidateQueries({ queryKey: ["markets"] });
         break;
     }
