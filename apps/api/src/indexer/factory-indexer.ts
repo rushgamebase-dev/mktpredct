@@ -6,7 +6,7 @@ import { publicClient } from '../services/chain.js'
 import { env } from '../env.js'
 
 const FACTORY_SYNC_KEY = 'factory'
-const BATCH_SIZE = 2000n
+const BATCH_SIZE = 9n // Alchemy free tier: max 10 blocks per eth_getLogs
 
 export async function syncFactory(currentBlock: bigint): Promise<void> {
   const factoryAddress = env.FACTORY_ADDRESS as `0x${string}`
