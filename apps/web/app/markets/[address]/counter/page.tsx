@@ -53,6 +53,18 @@ export default function CounterMarketPage() {
   const { data: allMarketsData } = useMarkets({ page: 1, pageSize: 20, status: "all" });
   const allMarkets = allMarketsData?.markets ?? [];
 
+  // Derive target info from market data
+  const sourceConfig = (marketData as any)?.sourceConfig as Record<string, any> | undefined;
+  const twitterTarget = sourceConfig?.target ?? 'unknown';
+  const keyword = sourceConfig?.keyword as string | undefined;
+  const threshold = (sourceConfig?.threshold as number) ?? THRESHOLD;
+  const marketQuestion = marketData?.question ?? `Will @${twitterTarget} hit threshold?`;
+  const avatarMap: Record<string, string> = {
+    'aixbt_agent': '/aixbt-avatar.jpg',
+    'jessepollak': '/jesse-avatar.jpg',
+  };
+  const avatarSrc = avatarMap[twitterTarget] ?? '/logo.png';
+
   // Pace & projection
   const pace = useMemo(() => {
     const elapsed = (Date.now() - startTime) / 1000 / 60; // minutes since page load
@@ -60,17 +72,17 @@ export default function CounterMarketPage() {
     const effectiveHours = Math.max(0.5, hoursPassed);
     const tweetsPerHour = activeCount / effectiveHours;
     const projected = Math.round(tweetsPerHour * 24);
-    const remaining = THRESHOLD - activeCount;
+    const remaining = threshold - activeCount;
     const hoursRemaining = hoursLeft;
     const neededPerHour = remaining > 0 && hoursRemaining > 0 ? remaining / hoursRemaining : 0;
 
     let status: "ahead" | "on_track" | "behind" | "hit" = "behind";
-    if (activeCount >= THRESHOLD) status = "hit";
-    else if (projected >= THRESHOLD * 1.2) status = "ahead";
-    else if (projected >= THRESHOLD * 0.8) status = "on_track";
+    if (activeCount >= threshold) status = "hit";
+    else if (projected >= threshold * 1.2) status = "ahead";
+    else if (projected >= threshold * 0.8) status = "on_track";
 
     return { tweetsPerHour, projected, remaining, neededPerHour, status };
-  }, [activeCount, hoursLeft, startTime]);
+  }, [activeCount, hoursLeft, startTime, threshold]);
 
   // Fetch
   const fetchTweets = useCallback(async () => {
@@ -160,19 +172,19 @@ export default function CounterMarketPage() {
   }, []);
 
   // Dynamic odds
-  const dynamicYes = activeCount >= THRESHOLD ? 95 : Math.min(92, 25 + (pace.projected / THRESHOLD) * 50);
+  const dynamicYes = activeCount >= threshold ? 95 : Math.min(92, 25 + (pace.projected / threshold) * 50);
   const dynamicNo = 100 - dynamicYes;
-  const progress = Math.min(100, (activeCount / THRESHOLD) * 100);
+  const progress = Math.min(100, (activeCount / threshold) * 100);
 
   // Clutch zone
-  const isClutch = activeCount >= THRESHOLD - 5 && activeCount < THRESHOLD;
-  const isHit = activeCount >= THRESHOLD;
+  const isClutch = activeCount >= threshold - 5 && activeCount < threshold;
+  const isHit = activeCount >= threshold;
 
   // Narrative
   const narrative = useMemo(() => {
-    if (isHit) return "🎉 THRESHOLD HIT — YES wins";
-    if (isClutch && pace.status !== "behind") return `🔥 ${THRESHOLD - activeCount} to go — pace is hot`;
-    if (isClutch) return `⚠️ ${THRESHOLD - activeCount} to go — needs ${pace.neededPerHour.toFixed(1)}/hr`;
+    if (isHit) return "🎉 threshold HIT — YES wins";
+    if (isClutch && pace.status !== "behind") return `🔥 ${threshold - activeCount} to go — pace is hot`;
+    if (isClutch) return `⚠️ ${threshold - activeCount} to go — needs ${pace.neededPerHour.toFixed(1)}/hr`;
     if (recentCount >= 3) return `🔥 ${recentCount} tweets in 30 min — momentum building`;
     if (pace.status === "ahead") return `📈 Ahead — projected ${pace.projected}`;
     if (pace.status === "on_track") return "⚡ On track — every tweet counts";
@@ -193,10 +205,10 @@ export default function CounterMarketPage() {
       {/* Header */}
       <div className="mb-6 rounded-2xl p-6" style={{ background: "linear-gradient(180deg, rgba(29,155,240,0.08) 0%, transparent 200px)" }}>
         <div className="flex items-center gap-3 mb-2">
-          <img src="/aixbt-avatar.jpg" alt="aixbt" className="h-12 w-12 rounded-xl" style={{ border: "2px solid rgba(29,155,240,0.3)" }} />
+          <img src={avatarSrc} alt={twitterTarget} className="h-12 w-12 rounded-xl" style={{ border: "2px solid rgba(29,155,240,0.3)" }} />
           <div className="flex-1">
             <h1 className="text-xl font-black text-white sm:text-2xl">
-              Will @aixbt_agent post {THRESHOLD}+ tweets today?
+              {marketQuestion}
             </h1>
             <p className="text-sm italic text-gray-400 mt-1">{narrative}</p>
           </div>
@@ -258,7 +270,7 @@ export default function CounterMarketPage() {
             </AnimatePresence>
 
             <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">
-              @aixbt_agent tweets {period === "today" ? "today" : "last 24h"}
+              @{twitterTarget} {keyword ? `"${keyword}"` : "tweets"} {period === "today" ? "today" : "last 24h"}
             </div>
 
             <motion.div
@@ -272,7 +284,7 @@ export default function CounterMarketPage() {
             </motion.div>
 
             <div className="text-sm text-gray-500 mt-1">
-              / {THRESHOLD} needed for <span style={{ color: "#3B82F6" }}>Yes</span>
+              / {threshold} needed for <span style={{ color: "#3B82F6" }}>Yes</span>
               {period !== "today" && <span className="text-gray-600 ml-2">(last 24h)</span>}
             </div>
 
@@ -285,7 +297,7 @@ export default function CounterMarketPage() {
                 style={{ color: "#ff4444" }}
               >
                 <AlertTriangle className="h-4 w-4" />
-                {THRESHOLD - activeCount} to go — needs {Math.ceil(pace.neededPerHour * 10) / 10}/hr
+                {threshold - activeCount} to go — needs {Math.ceil(pace.neededPerHour * 10) / 10}/hr
               </motion.div>
             )}
 
@@ -296,7 +308,7 @@ export default function CounterMarketPage() {
                 className="mt-3 text-lg font-black"
                 style={{ color: "#00ff88" }}
               >
-                ✅ THRESHOLD HIT!
+                ✅ threshold HIT!
               </motion.div>
             )}
 
@@ -323,9 +335,9 @@ export default function CounterMarketPage() {
             <div className="flex justify-between text-[10px] text-gray-600 mt-1">
               <span>0</span>
               <span className="font-bold" style={{ color: progress > 50 ? "#ffc828" : "#666" }}>
-                {isHit ? "🎯 Complete!" : `${THRESHOLD - activeCount} remaining`}
+                {isHit ? "🎯 Complete!" : `${threshold - activeCount} remaining`}
               </span>
-              <span>{THRESHOLD}</span>
+              <span>{threshold}</span>
             </div>
 
             {/* Pace stats */}
@@ -336,7 +348,7 @@ export default function CounterMarketPage() {
               </div>
               <div className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.02)" }}>
                 <div className="text-[10px] text-gray-500">Projected</div>
-                <div className="text-sm font-bold tabular" style={{ color: pace.projected >= THRESHOLD ? "#00ff88" : "#ff4444" }}>{pace.projected}</div>
+                <div className="text-sm font-bold tabular" style={{ color: pace.projected >= threshold ? "#00ff88" : "#ff4444" }}>{pace.projected}</div>
               </div>
               <div className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.02)" }}>
                 <div className="text-[10px] text-gray-500">Need/hr</div>
@@ -478,7 +490,7 @@ export default function CounterMarketPage() {
                   const label = day.date === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
                     ? "Yesterday"
                     : date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-                  const pct = Math.min(100, (day.count / THRESHOLD) * 100);
+                  const pct = Math.min(100, (day.count / threshold) * 100);
                   return (
                     <div key={day.date} className="flex items-center gap-2">
                       <span className="text-[10px] text-gray-500 w-20 shrink-0">{label}</span>
@@ -503,7 +515,7 @@ export default function CounterMarketPage() {
         <div className="lg:col-span-2">
           <div className="card p-4">
             <h3 className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-3">
-              <img src="/aixbt-avatar.jpg" alt="" className="h-5 w-5 rounded-full" />
+              <img src={avatarSrc} alt="" className="h-5 w-5 rounded-full" />
               Live Feed
               <span className="live-dot" style={{ width: 6, height: 6 }} />
               <span className="text-[10px] text-gray-600 font-normal ml-auto">{activeCount} tweets</span>
