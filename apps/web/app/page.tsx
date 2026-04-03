@@ -13,7 +13,7 @@ import MarketSelector from "@/components/home/MarketSelector";
 import LiveActivitySidebar from "@/components/home/LiveActivitySidebar";
 import NewsSidebar from "@/components/home/NewsSidebar";
 import { staggerContainer, tabContent } from "@/lib/animations";
-import { TrendingUp, CheckCircle, LayoutGrid, Zap, Activity } from "lucide-react";
+import { TrendingUp, CheckCircle, LayoutGrid, Newspaper, Activity, ExternalLink, Zap } from "lucide-react";
 import { formatEth } from "@/lib/format";
 import type { MarketsListQuery, ChartResponse, OddsPoint, WsGlobalMessage } from "@rush/shared";
 import { OUTCOME_COLORS } from "@rush/shared";
@@ -202,7 +202,7 @@ export default function HomePage() {
               Live Markets
             </h1>
             <p className="mt-1 text-sm text-gray-500">
-              Real-time prediction arena
+              The first prediction market focused on the Base ecosystem
             </p>
           </div>
           {/* Tension stats */}
@@ -363,47 +363,44 @@ export default function HomePage() {
         </div>
       </motion.div>
 
-      {/* ---- HOT MARKETS (enhanced cards) ---- */}
+      {/* ---- HEADLINES ---- */}
       <motion.div
         variants={sectionVariants} initial="hidden" animate="visible" custom={4}
         className="mb-6"
       >
-        <div className="flex items-center gap-2 mb-3">
-          <Zap className="h-4 w-4" style={{ color: "#ffc828" }} />
-          <h2 className="text-lg font-bold text-white">Hot Markets</h2>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Newspaper className="h-4 w-4" style={{ color: "#3B82F6" }} />
+            <h2 className="text-lg font-bold text-white">Headlines</h2>
+          </div>
+          <span className="text-[10px] text-gray-600 uppercase tracking-wider">Crypto &middot; Base &middot; Politics</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {heroMarkets.map((m, i) => {
-            const primary = m.odds[0] ?? 50;
-            const pool = formatEth(m.totalPool);
-            const badge = primary > 65 ? "🔥 trending" : primary < 35 ? "⚡ moving fast" : "💰 active";
-            const badgeColor = primary > 65 ? "#ff6400" : primary < 35 ? "#ffc828" : "#00ff88";
-            return (
-              <a
-                key={m.address}
-                href={`/markets/${m.address}`}
-                className="block rounded-xl p-4 transition-all duration-150 hover:scale-[1.02] market-card-glow"
-                style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold line-clamp-1 text-gray-200">{m.question}</span>
-                  <span className="text-[10px] font-bold shrink-0 ml-2 px-1.5 py-0.5 rounded-full" style={{ background: badgeColor + "15", color: badgeColor }}>
-                    {badge}
-                  </span>
-                </div>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <span className="text-2xl font-black tabular" style={{ color: OUTCOME_COLORS[0] }}>{Math.round(primary)}%</span>
-                    <span className="text-xs text-gray-500 ml-1">{m.labels[0]}</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-gray-500">{pool} pool</div>
-                    <div className="text-[10px] text-gray-600">{m.outcomeCount} outcomes</div>
-                  </div>
-                </div>
-              </a>
-            );
-          })}
+          {[
+            { tag: "Base", color: "#3B82F6", title: "Base surpasses 200M total transactions as ecosystem grows", source: "The Block" },
+            { tag: "DeFi", color: "#00ff88", title: "Coinbase expands Base ecosystem with new institutional partnerships", source: "CoinDesk" },
+            { tag: "ETH", color: "#8B5CF6", title: "ETH staking yields attract institutional capital amid market shift", source: "Bloomberg" },
+            { tag: "Regulation", color: "#ffc828", title: "US House committee advances stablecoin framework legislation", source: "Reuters" },
+            { tag: "AI", color: "#EC4899", title: "AI-powered DeFi protocols see surge in adoption on L2 networks", source: "Decrypt" },
+            { tag: "Markets", color: "#EF4444", title: "DeFi protocols on Base reach $3B TVL milestone in record time", source: "DeFi Llama" },
+          ].map((item, i) => (
+            <div
+              key={i}
+              className="rounded-xl p-4 transition-all duration-150 hover:scale-[1.02]"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: item.color + "15", color: item.color }}
+                >
+                  {item.tag}
+                </span>
+                <span className="text-[10px] text-gray-600">{item.source}</span>
+              </div>
+              <p className="text-xs font-medium text-gray-300 leading-relaxed">{item.title}</p>
+            </div>
+          ))}
         </div>
       </motion.div>
 

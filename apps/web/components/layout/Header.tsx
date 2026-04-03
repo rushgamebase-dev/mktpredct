@@ -18,6 +18,8 @@ const CATEGORIES = [
   { label: "Other", slug: "other" },
 ] as const;
 
+const RUSH_CARS_URL = "https://www.rushgame.vip";
+
 export default function Header() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
@@ -67,6 +69,26 @@ export default function Header() {
             RUSH
           </span>
         </Link>
+
+        {/* Rush Cars link */}
+        <a
+          href={RUSH_CARS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all hover:scale-105"
+          style={{
+            background: "rgba(0,255,136,0.06)",
+            border: "1px solid rgba(0,255,136,0.15)",
+            color: "#00ff88",
+          }}
+        >
+          <span style={{ fontSize: 14 }}>🏎️</span>
+          Rush Cars
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style={{ background: "#ff4444" }} />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ background: "#ff4444" }} />
+          </span>
+        </a>
 
         {/* Right side: theme toggle + wallet */}
         <div className="flex items-center gap-3">
