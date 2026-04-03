@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { eq, desc, asc } from 'drizzle-orm'
-import { bets, claims } from '@rush/shared/db/schema'
+import { bets, claims, markets } from '@rush/shared/db/schema'
 import type { ActivityResponse, ChartResponse } from '@rush/shared'
 import type { BetEvent, ClaimEvent, OddsPoint } from '@rush/shared'
 import { db } from '../db.js'
@@ -63,7 +63,15 @@ app.get('/:address/chart', async (c) => {
     .orderBy(asc(bets.timestamp), asc(bets.blockNumber), asc(bets.logIndex))
 
   if (betRows.length === 0) {
-    return c.json({ points: [] } satisfies ChartResponse)
+    // Return 50/50 baseline so charts render something
+    const market = await db.select().from(markets).where(eq(markets.address, address)).limit(1)
+    const oc = market[0]?.outcomeCount ?? 2
+    const evenOdds = Array.from({ length: oc }, () => Math.round(100 / oc))
+    const now = Math.floor(Date.now() / 1000)
+    return c.json({ points: [
+      { timestamp: now - 3600, odds: evenOdds },
+      { timestamp: now, odds: evenOdds },
+    ] } satisfies ChartResponse)
   }
 
   // Determine outcome count from the max outcomeIndex seen
@@ -89,6 +97,11 @@ app.get('/:address/chart', async (c) => {
       timestamp: bet.timestamp,
       odds,
     })
+  }
+
+  // If only 1 point, add a second point at "now" so charts can draw a line
+  if (points.length === 1) {
+    points.push({ timestamp: Math.floor(Date.now() / 1000), odds: points[0].odds })
   }
 
   return c.json({ points } satisfies ChartResponse)
