@@ -8,7 +8,8 @@ export const ownerAccount = privateKeyToAccount(env.OWNER_PRIVATE_KEY as `0x${st
 
 export const publicClient = createPublicClient({
   chain: base,
-  transport: http(env.RPC_URL),
+  transport: http(env.RPC_URL, { batch: false }),
+  batch: { multicall: false },
 })
 
 export const walletClient = createWalletClient({
