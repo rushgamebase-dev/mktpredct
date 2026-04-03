@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, Clock, TrendingUp, Zap, AlertTriangle, Target, Users } from "lucide-react";
@@ -28,6 +28,7 @@ export default function AixbtDemoPage() {
   const [newTweetFlash, setNewTweetFlash] = useState(false);
   const [plusOneVisible, setPlusOneVisible] = useState(false);
   const [startTime] = useState(Date.now());
+  const feedRef = useRef<HTMLDivElement>(null);
 
   const activeCount = period === "today" ? todayCount : last24hCount;
 
@@ -63,6 +64,10 @@ export default function AixbtDemoPage() {
         setPlusOneVisible(true);
         setTimeout(() => setNewTweetFlash(false), 2000);
         setTimeout(() => setPlusOneVisible(false), 1500);
+        // Auto-scroll feed to top
+        setTimeout(() => {
+          feedRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+        }, 300);
       }
 
       setPrevCount(activeCount);
@@ -165,6 +170,14 @@ export default function AixbtDemoPage() {
 
           {/* BIG COUNTER */}
           <div className={`card p-6 text-center relative overflow-hidden ${isHit ? "neon-glow" : isClutch ? "neon-glow-danger" : ""}`}>
+            {/* Countdown prominent */}
+            <div className="absolute top-3 right-4 text-right">
+              <div className="text-[9px] uppercase tracking-wider text-gray-600">Time left</div>
+              <div className="text-lg font-black tabular" style={{ color: hoursLeft < 3 ? "#ff4444" : hoursLeft < 8 ? "#ffc828" : "#666" }}>
+                {countdown}
+              </div>
+            </div>
+
             {/* +1 animation */}
             <AnimatePresence>
               {plusOneVisible && (
@@ -314,19 +327,19 @@ export default function AixbtDemoPage() {
             ) : tweets.length === 0 ? (
               <p className="text-xs text-gray-600 text-center py-8">Waiting for first tweet...</p>
             ) : (
-              <div className="space-y-2 max-h-[520px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+              <div ref={feedRef} className="space-y-2 max-h-[520px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
                 {tweets.map((tweet, i) => (
                   <motion.div
                     key={tweet.id}
-                    initial={i === 0 ? { opacity: 0, x: -12, background: "rgba(0,255,136,0.08)" } : false}
+                    initial={i === 0 ? { opacity: 0, x: -12, background: "rgba(0,255,136,0.1)" } : false}
                     animate={{ opacity: 1, x: 0, background: "rgba(255,255,255,0.02)" }}
-                    transition={{ duration: 0.4 }}
+                    transition={{ duration: 0.5 }}
                     className="rounded-lg p-3"
                     style={{ border: "1px solid var(--border)" }}
                   >
                     <div className="flex items-start gap-2">
-                      <span className="text-[10px] font-bold shrink-0 rounded px-1 py-0.5" style={{ background: "rgba(29,155,240,0.1)", color: "#1D9BF0" }}>
-                        #{activeCount - i}
+                      <span className="text-[10px] font-bold shrink-0 rounded px-1.5 py-0.5 flex items-center gap-1" style={{ background: "rgba(0,255,136,0.08)", color: "#00ff88" }}>
+                        ✅ #{activeCount - i}
                       </span>
                       <p className="text-xs text-gray-300 leading-relaxed line-clamp-3">{tweet.text}</p>
                     </div>
@@ -334,6 +347,7 @@ export default function AixbtDemoPage() {
                       <span>❤ {tweet.likeCount}</span>
                       <span>🔁 {tweet.retweetCount}</span>
                       <span>{new Date(tweet.createdAt).toLocaleTimeString()}</span>
+                      <span className="italic text-gray-700">counted</span>
                     </div>
                   </motion.div>
                 ))}
