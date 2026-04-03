@@ -26,6 +26,8 @@ interface Tweet {
 export default function AixbtDemoPage() {
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [todayCount, setTodayCount] = useState(0);
+  const [last24hCount, setLast24hCount] = useState(0);
+  const [period, setPeriod] = useState("today");
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [countdown, setCountdown] = useState("");
@@ -41,6 +43,8 @@ export default function AixbtDemoPage() {
       setTweets(data.tweets);
       setPrevCount(todayCount);
       setTodayCount(data.todayCount);
+      setLast24hCount(data.last24hCount ?? data.todayCount);
+      setPeriod(data.period ?? "today");
       setLastUpdate(new Date().toLocaleTimeString());
       setLoading(false);
 
@@ -79,8 +83,9 @@ export default function AixbtDemoPage() {
 
   // Dynamic odds based on current count
   const threshold = 20;
-  const progress = Math.min(100, (todayCount / threshold) * 100);
-  const dynamicYes = todayCount >= threshold ? 95 : Math.min(90, 30 + (todayCount / threshold) * 60);
+  const activeCount = period === "today" ? todayCount : last24hCount;
+  const progress = Math.min(100, (activeCount / threshold) * 100);
+  const dynamicYes = activeCount >= threshold ? 95 : Math.min(90, 30 + (activeCount / threshold) * 60);
   const dynamicNo = 100 - dynamicYes;
 
   return (
@@ -137,19 +142,20 @@ export default function AixbtDemoPage() {
           {/* Big counter */}
           <div className="card p-6 text-center">
             <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">
-              @aixbt_agent tweets today
+              @aixbt_agent tweets {period === "today" ? "today" : "last 24h"}
             </div>
             <motion.div
-              key={todayCount}
+              key={period === "today" ? todayCount : last24hCount}
               initial={{ scale: 1.3, color: "#00ff88" }}
               animate={{ scale: 1, color: "#ffffff" }}
               transition={{ duration: 0.5 }}
               className={`text-7xl font-black tabular ${flashCount ? "neon-green" : ""}`}
             >
-              {loading ? "..." : todayCount}
+              {loading ? "..." : period === "today" ? todayCount : last24hCount}
             </motion.div>
             <div className="text-sm text-gray-500 mt-2">
               / {threshold} needed for <span style={{ color: "#00ff88" }}>Yes</span>
+              {period !== "today" && <span className="text-gray-600 ml-2">(showing last 24h)</span>}
             </div>
 
             {/* Progress bar */}

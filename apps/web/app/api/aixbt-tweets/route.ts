@@ -20,17 +20,28 @@ export async function GET() {
     const data = await res.json();
     const allTweets = data?.data?.tweets ?? [];
 
-    // Filter today's tweets (UTC)
+    // Filter last 24h tweets
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10); // "2026-04-02"
+    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const todayStr = now.toISOString().slice(0, 10);
 
+    // Today's tweets (UTC midnight)
     const todayTweets = allTweets.filter((t: any) => {
       const created = new Date(t.createdAt);
       return created.toISOString().slice(0, 10) === todayStr;
     });
 
-    // Return simplified tweet data
-    const tweets = todayTweets.map((t: any) => ({
+    // Last 24h tweets (fallback when today has 0)
+    const last24h = allTweets.filter((t: any) => {
+      const created = new Date(t.createdAt);
+      return created >= cutoff;
+    });
+
+    // Use today's if available, else last 24h
+    const useTweets = todayTweets.length > 0 ? todayTweets : last24h;
+    const label = todayTweets.length > 0 ? "today" : "last 24h";
+
+    const tweets = useTweets.map((t: any) => ({
       id: t.id,
       text: t.text,
       createdAt: t.createdAt,
@@ -40,7 +51,9 @@ export async function GET() {
 
     return NextResponse.json({
       tweets,
-      todayCount: tweets.length,
+      todayCount: todayTweets.length,
+      last24hCount: last24h.length,
+      period: label,
       date: todayStr,
       username: USERNAME,
     });
