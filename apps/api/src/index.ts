@@ -17,6 +17,7 @@ import leaderboardRoutes from './routes/leaderboard.js'
 import statsRoutes from './routes/stats.js'
 import counterRoutes from './routes/counter.js'
 import notificationsRoutes from './routes/notifications.js'
+import newsRoutes from './routes/news.js'
 
 const app = new Hono()
 
@@ -37,6 +38,7 @@ app.route('/api/markets', counterRoutes)
 app.route('/api/users', usersRoutes)
 app.route('/api/leaderboard', leaderboardRoutes)
 app.route('/api/users', notificationsRoutes)
+app.route('/api/news', newsRoutes)
 
 // Start HTTP server
 const server = serve(
