@@ -70,12 +70,14 @@ export default function NewsHeadlines() {
           setArticles(FALLBACK_HEADLINES);
         }
       } catch {
-        setArticles(FALLBACK_HEADLINES);
+        if (articles.length === 0) setArticles(FALLBACK_HEADLINES);
       }
       setLoading(false);
     };
     fetchNews();
-  }, []);
+    const interval = setInterval(fetchNews, 120_000); // Refresh every 2 min
+    return () => clearInterval(interval);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
@@ -113,33 +115,32 @@ export default function NewsHeadlines() {
               href={article.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block rounded-xl overflow-hidden transition-all duration-150 hover:scale-[1.02]"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+              className="flex rounded-xl overflow-hidden transition-all duration-150 hover:scale-[1.02]"
+              style={{ background: "var(--surface)", border: "1px solid var(--border)", height: 88 }}
             >
-              {/* Image */}
+              {/* Thumbnail */}
               {article.imageUrl && (
-                <div className="relative h-32 overflow-hidden">
+                <div className="w-20 shrink-0 overflow-hidden">
                   <img
                     src={article.imageUrl}
                     alt=""
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
-                  <div className="absolute inset-0" style={{ background: "linear-gradient(transparent 40%, rgba(0,0,0,0.8))" }} />
-                  <div className="absolute bottom-2 left-3 flex items-center gap-2">
-                    <span
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{ background: color + "30", color, backdropFilter: "blur(4px)" }}
-                    >
-                      {article.category}
-                    </span>
-                    <span className="text-[10px] text-gray-400">{article.source}</span>
-                  </div>
                 </div>
               )}
-              <div className="p-3">
-                <p className="text-xs font-medium text-gray-300 leading-relaxed line-clamp-2">{article.title}</p>
-                <p className="text-[10px] text-gray-600 mt-1.5">{timeAgo(article.publishedAt)}</p>
+              <div className="flex-1 min-w-0 p-2.5 flex flex-col justify-between">
+                <p className="text-[11px] font-medium text-gray-300 leading-snug line-clamp-2">{article.title}</p>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-[9px] font-bold px-1 py-0.5 rounded"
+                    style={{ background: color + "15", color }}
+                  >
+                    {article.category.split(',')[0]}
+                  </span>
+                  <span className="text-[9px] text-gray-600">{article.source}</span>
+                  <span className="text-[9px] text-gray-700">{timeAgo(article.publishedAt)}</span>
+                </div>
               </div>
             </a>
           );
