@@ -32,6 +32,8 @@ function toMarketSummary(row: typeof markets.$inferSelect): MarketSummary {
     odds: computeOdds(row.totalPerOutcome as string[], row.totalPool),
     createdAt: row.createdAt,
     resolvedAt: row.resolvedAt,
+    marketType: (row.marketType ?? 'classic') as MarketSummary['marketType'],
+    sourceConfig: (row.sourceConfig as MarketSummary['sourceConfig']) ?? null,
   }
 }
 

@@ -37,6 +37,8 @@ export interface CreateMarketRequest {
 	labels: string[]
 	deadline: number
 	gracePeriod: number
+	marketType?: 'classic' | 'counter' | 'price' | 'event'
+	sourceConfig?: Record<string, unknown>
 }
 
 export interface CreateMarketResponse {

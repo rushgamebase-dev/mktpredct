@@ -1,5 +1,6 @@
 import {
 	pgTable,
+	pgEnum,
 	text,
 	integer,
 	bigint,
@@ -9,7 +10,10 @@ import {
 	serial,
 	varchar,
 	uniqueIndex,
+	jsonb,
 } from 'drizzle-orm/pg-core'
+
+export const marketTypeEnum = pgEnum('market_type', ['classic', 'counter', 'price', 'event'])
 
 export const markets = pgTable(
 	'markets',
@@ -31,6 +35,8 @@ export const markets = pgTable(
 		resolvedAt: bigint('resolved_at', { mode: 'number' }),
 		createdBlock: bigint('created_block', { mode: 'number' }).notNull(),
 		createdTxHash: varchar('created_tx_hash', { length: 66 }).notNull(),
+		marketType: marketTypeEnum('market_type').notNull().default('classic'),
+		sourceConfig: jsonb('source_config').default('{}'),
 	},
 	(table) => [
 		index('idx_markets_status').on(table.status),

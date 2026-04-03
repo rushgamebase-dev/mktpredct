@@ -1,11 +1,14 @@
 import { Hono } from 'hono'
 import { parseEventLogs } from 'viem'
+import { eq } from 'drizzle-orm'
 import { MarketFactoryABI, MarketABI } from '@rush/shared'
 import type { CreateMarketRequest, CreateMarketResponse, ResolveMarketRequest, TxResponse } from '@rush/shared'
 import { adminAuth } from '../middleware/auth.js'
 import { walletClient, publicClient } from '../services/chain.js'
 import { signResolve, signCancel } from '../services/oracle.js'
 import { env } from '../env.js'
+import { db } from '../db.js'
+import { markets } from '@rush/shared/db/schema'
 
 const app = new Hono()
 
@@ -48,6 +51,22 @@ app.post('/markets', async (c) => {
   let marketAddress = ''
   if (parsed.length > 0) {
     marketAddress = (parsed[0].args as any).market
+  }
+
+  // Set market type metadata (async — indexer creates the row first, then we update)
+  if (marketAddress && (body.marketType || body.sourceConfig)) {
+    const addr = marketAddress.toLowerCase()
+    // Wait a bit for indexer to create the row, then update
+    setTimeout(async () => {
+      try {
+        await db.update(markets)
+          .set({
+            marketType: body.marketType ?? 'classic',
+            sourceConfig: body.sourceConfig ?? {},
+          })
+          .where(eq(markets.address, addr))
+      } catch { /* indexer may not have created row yet — metadata will be set on next call */ }
+    }, 5000)
   }
 
   const response: CreateMarketResponse = {

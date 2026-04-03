@@ -1,5 +1,15 @@
 import type { MarketStatus } from '../config'
 
+export type MarketType = 'classic' | 'counter' | 'price' | 'event'
+
+export interface SourceConfig {
+	type: string // "twitter", "price", "custom"
+	target?: string // "aixbt_agent", "ETH", etc
+	threshold?: number // 20 tweets, $5000, etc
+	window?: string // "24h", "1h", etc
+	[key: string]: unknown
+}
+
 export interface MarketSummary {
 	address: string
 	question: string
@@ -14,6 +24,8 @@ export interface MarketSummary {
 	odds: number[]
 	createdAt: number
 	resolvedAt: number | null
+	marketType: MarketType
+	sourceConfig: SourceConfig | null
 }
 
 export interface MarketDetail extends MarketSummary {
