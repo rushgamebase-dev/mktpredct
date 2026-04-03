@@ -70,11 +70,21 @@ export default function HomePage() {
   const { data, isLoading, error } = useMarkets(queryParams);
   const markets = data?.markets ?? [];
 
-  // Hero chart: only show open markets with pool > 0 (max 5)
+  // Hero chart: counter markets first (AIXBT etc), then by pool, max 5
   const heroMarkets = useMemo(
-    () => markets
-      .filter((m) => m.status === "open" && BigInt(m.totalPool) > BigInt(0))
-      .slice(0, 5),
+    () => {
+      const open = markets.filter((m) => m.status === "open");
+      // Counter markets first (featured)
+      const counters = open.filter((m) => m.marketType === "counter");
+      const rest = open
+        .filter((m) => m.marketType !== "counter")
+        .sort((a, b) => {
+          const poolA = BigInt(a.totalPool);
+          const poolB = BigInt(b.totalPool);
+          return poolB > poolA ? 1 : poolB < poolA ? -1 : 0;
+        });
+      return [...counters, ...rest].slice(0, 5);
+    },
     [markets],
   );
 
