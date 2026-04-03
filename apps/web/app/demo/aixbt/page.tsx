@@ -29,6 +29,11 @@ export default function AixbtDemoPage() {
   const [plusOneVisible, setPlusOneVisible] = useState(false);
   const [startTime] = useState(Date.now());
   const feedRef = useRef<HTMLDivElement>(null);
+  const [history, setHistory] = useState<{ date: string; count: number; hit: boolean }[]>([]);
+  const [streak, setStreak] = useState(0);
+  const [hourly, setHourly] = useState<number[]>(new Array(24).fill(0));
+  const [recentCount, setRecentCount] = useState(0);
+  const [lastTweetTime, setLastTweetTime] = useState<string | null>(null);
 
   const activeCount = period === "today" ? todayCount : last24hCount;
 
@@ -75,6 +80,11 @@ export default function AixbtDemoPage() {
       setTodayCount(data.todayCount);
       setLast24hCount(data.last24hCount ?? data.todayCount);
       setPeriod(data.period ?? "today");
+      setHistory(data.history ?? []);
+      setStreak(data.streak ?? 0);
+      setHourly(data.hourly ?? new Array(24).fill(0));
+      setRecentCount(data.recentCount ?? 0);
+      setLastTweetTime(data.lastTweetTime ?? null);
       setLastUpdate(new Date().toLocaleTimeString());
       setLoading(false);
     } catch {
@@ -283,6 +293,100 @@ export default function AixbtDemoPage() {
               </div>
             </div>
           </div>
+
+          {/* Recent activity + last tweet */}
+          <div className="card p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 text-xs">
+                  <Zap className="h-3.5 w-3.5" style={{ color: "#ffc828" }} />
+                  <span className="font-bold" style={{ color: recentCount > 3 ? "#00ff88" : recentCount > 0 ? "#ffc828" : "#666" }}>
+                    {recentCount} tweets
+                  </span>
+                  <span className="text-gray-500">in last 30 min</span>
+                </div>
+              </div>
+              {lastTweetTime && (
+                <div className="text-[10px] text-gray-500">
+                  Last tweet: {(() => {
+                    const diff = Math.floor((Date.now() - new Date(lastTweetTime).getTime()) / 1000);
+                    if (diff < 60) return `${diff}s ago`;
+                    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+                    return `${Math.floor(diff / 3600)}h ago`;
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Timeline — hourly distribution */}
+          <div className="card p-4">
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">Today&apos;s Timeline (UTC)</h3>
+            <div className="flex items-end gap-[2px] h-10">
+              {hourly.map((count, h) => {
+                const maxH = Math.max(...hourly, 1);
+                const barH = count > 0 ? Math.max(4, (count / maxH) * 40) : 2;
+                const currentHour = new Date().getUTCHours();
+                const isPast = h <= currentHour;
+                return (
+                  <div
+                    key={h}
+                    className="flex-1 rounded-sm transition-all"
+                    title={`${h}:00 UTC — ${count} tweets`}
+                    style={{
+                      height: barH,
+                      background: count > 0
+                        ? (h === currentHour ? "#00ff88" : "#3B82F6")
+                        : isPast ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)",
+                      opacity: isPast ? 1 : 0.3,
+                    }}
+                  />
+                );
+              })}
+            </div>
+            <div className="flex justify-between text-[8px] text-gray-600 mt-1">
+              <span>0h</span>
+              <span>6h</span>
+              <span>12h</span>
+              <span>18h</span>
+              <span>24h</span>
+            </div>
+          </div>
+
+          {/* History — last days */}
+          {history.length > 0 && (
+            <div className="card p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-500">History</h3>
+                {streak > 0 && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(0,255,136,0.1)", color: "#00ff88" }}>
+                    🔥 {streak}-day streak
+                  </span>
+                )}
+              </div>
+              <div className="space-y-1">
+                {history.slice(0, 5).map((day) => {
+                  const date = new Date(day.date + "T00:00:00Z");
+                  const label = day.date === new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+                    ? "Yesterday"
+                    : date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                  const pct = Math.min(100, (day.count / THRESHOLD) * 100);
+                  return (
+                    <div key={day.date} className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-500 w-20 shrink-0">{label}</span>
+                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: day.hit ? "#00ff88" : pct > 50 ? "#ffc828" : "#3B82F6" }} />
+                      </div>
+                      <span className="text-[10px] font-bold tabular w-8 text-right" style={{ color: day.hit ? "#00ff88" : "#888" }}>
+                        {day.count}
+                      </span>
+                      <span className="text-[10px] w-4">{day.hit ? "✅" : "❌"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Odds */}
           <div className="card p-4">
