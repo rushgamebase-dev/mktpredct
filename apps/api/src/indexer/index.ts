@@ -22,8 +22,8 @@ async function tick(): Promise<void> {
 
     await syncFactory(safeBlock)
     await syncMarkets(safeBlock)
-  } catch (err) {
-    console.error('[Indexer] Error:', err)
+  } catch (err: any) {
+    console.error('[Indexer] Error:', err?.message ?? err, err?.stack?.slice(0, 200) ?? '')
   } finally {
     running = false
   }
