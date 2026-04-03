@@ -22,7 +22,13 @@ const cache: Record<string, {
   lastEventAt: number
   lastTweetId: string | null
   hourly: number[]
+  tweets: TweetData[]
 }> = {}
+
+// Export cache so counter route can access tweets
+export function getCachedTweets(marketAddress: string): TweetData[] {
+  return cache[marketAddress]?.tweets ?? []
+}
 
 async function fetchTweets(username: string): Promise<TweetData[]> {
   try {
@@ -102,7 +108,7 @@ async function pollTwitterSource(marketAddress: string, target: string): Promise
   // Skip if no change
   if (prev && lastTweetId === prev.lastTweetId) return
 
-  // Update cache
+  // Update cache (includes tweets for feed)
   cache[marketAddress] = {
     count,
     ratePerHour,
@@ -110,6 +116,7 @@ async function pollTwitterSource(marketAddress: string, target: string): Promise
     lastEventAt,
     lastTweetId,
     hourly,
+    tweets: todayTweets,
   }
 
   // Persist to DB

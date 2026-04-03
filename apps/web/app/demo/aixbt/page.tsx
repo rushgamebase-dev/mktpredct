@@ -93,8 +93,14 @@ export default function AixbtDemoPage() {
       setHourly(tl.length === 24 ? tl.map((t: { count: number }) => t.count) : new Array(24).fill(0));
       setRecentCount(0); // counter endpoint doesn't have this yet
       setLastTweetTime(data.lastEventAt > 0 ? new Date(data.lastEventAt * 1000).toISOString() : null);
-      // Clear tweets array (counter endpoint doesn't return individual tweets)
-      setTweets([]);
+      // Tweets from counter endpoint
+      setTweets((data.tweets ?? []).map((t: any) => ({
+        id: t.id ?? "",
+        text: t.text ?? "",
+        createdAt: t.createdAt ?? "",
+        likeCount: t.likeCount ?? 0,
+        retweetCount: t.retweetCount ?? 0,
+      })));
       setLastUpdate(new Date().toLocaleTimeString());
       setLoading(false);
     } catch {

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { counterState } from '@rush/shared/db/schema'
 import type { CounterResponse } from '@rush/shared'
 import { db } from '../db.js'
+import { getCachedTweets } from '../services/data-sources/twitter.js'
 
 const app = new Hono()
 
@@ -29,15 +30,23 @@ app.get('/:address/counter', async (c) => {
     }
 
     const row = rows[0]
-    const response: CounterResponse = {
+    // Get cached tweets from twitter poller
+    const tweets = getCachedTweets(address)
+
+    return c.json({
       currentCount: row.currentCount,
       ratePerHour: Number(row.ratePerHour),
       projected: row.projected,
       lastEventAt: row.lastEventAt,
       timeline: (row.timeline as { hour: number; count: number }[]) ?? [],
-    }
-
-    return c.json(response)
+      tweets: tweets.map((t) => ({
+        id: t.id,
+        text: t.text,
+        createdAt: t.createdAt,
+        likeCount: t.likeCount,
+        retweetCount: t.retweetCount,
+      })),
+    })
   } catch (err) {
     console.error('[counter] GET error:', err)
     return c.json({ error: 'Failed to fetch counter state' }, 500)
