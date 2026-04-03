@@ -1,7 +1,7 @@
 import type { Server as HttpServer } from 'node:http'
 import { WebSocketServer, WebSocket } from 'ws'
 import type { IncomingMessage } from 'node:http'
-import type { WsServerMessage } from '@rush/shared'
+import type { WsServerMessage, WsGlobalMessage } from '@rush/shared'
 import { broadcast } from './broadcast.js'
 
 export function setupWebSocket(server: HttpServer): void {
@@ -22,23 +22,24 @@ export function setupWebSocket(server: HttpServer): void {
   })
 
   wss.on('connection', (ws: WebSocket, _req: IncomingMessage, ...args: unknown[]) => {
-    const marketAddress = (args[0] as string) || ''
-    const address = marketAddress.toLowerCase()
+    const raw = (args[0] as string) || ''
+    // /ws/global subscribes to __global channel, otherwise per-market
+    const channel = raw === 'global' ? '__global' : raw.toLowerCase()
 
-    const listener = (message: WsServerMessage) => {
+    const listener = (message: WsServerMessage | WsGlobalMessage) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(message))
       }
     }
 
-    broadcast.on(address, listener)
+    broadcast.on(channel, listener)
 
     ws.on('close', () => {
-      broadcast.off(address, listener)
+      broadcast.off(channel, listener)
     })
 
     ws.on('error', () => {
-      broadcast.off(address, listener)
+      broadcast.off(channel, listener)
     })
   })
 }

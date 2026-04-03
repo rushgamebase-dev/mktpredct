@@ -10,6 +10,7 @@ config({ path: resolve(process.cwd(), '.env') })
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   RPC_URL: z.string().min(1),
+  WS_RPC_URL: z.string().min(1).optional(),
   CHAIN_ID: z.coerce.number().int().positive(),
   FACTORY_ADDRESS: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
   SIGNER_PRIVATE_KEY: z.string().regex(/^0x[a-fA-F0-9]{64}$/),

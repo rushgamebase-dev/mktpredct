@@ -7,7 +7,7 @@ export function useMarket(address: string) {
     queryKey: ["market", address],
     queryFn: () => apiGet<MarketDetailResponse>(`/api/markets/${address}`),
     enabled: !!address,
-    staleTime: 5_000,
-    refetchInterval: 10_000,
+    staleTime: 10_000,
+    refetchInterval: 120_000, // Slow fallback — WS invalidation handles real-time
   });
 }

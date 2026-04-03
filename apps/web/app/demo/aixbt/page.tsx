@@ -8,6 +8,8 @@ import MarketComments from "@/components/market/MarketComments";
 import RelatedMarkets from "@/components/market/RelatedMarkets";
 import { useMarket } from "@/hooks/useMarket";
 import { useMarkets } from "@/hooks/useMarkets";
+import { useMarketFeed } from "@/hooks/useMarketFeed";
+import type { WsServerMessage } from "@rush/shared";
 
 const THRESHOLD = 20;
 
@@ -108,11 +110,33 @@ export default function AixbtDemoPage() {
     }
   }, [activeCount]);
 
+  // Initial fetch + WS for real-time counter updates (no polling)
   useEffect(() => {
     fetchTweets();
-    const iv = setInterval(fetchTweets, 30000);
-    return () => clearInterval(iv);
   }, [fetchTweets]);
+
+  // Subscribe to WS counter_update events
+  const handleWsMessage = useCallback((msg: WsServerMessage) => {
+    if (msg.type === "counter_update") {
+      const d = msg.data;
+      // Update count from WS payload
+      if (d.currentCount > activeCount && activeCount > 0) {
+        setNewTweetFlash(true);
+        setPlusOneVisible(true);
+        setTimeout(() => setNewTweetFlash(false), 2000);
+        setTimeout(() => setPlusOneVisible(false), 1500);
+        setTimeout(() => { feedRef.current?.scrollTo({ top: 0, behavior: "smooth" }); }, 300);
+      }
+      setPrevCount(activeCount);
+      setTodayCount(d.currentCount);
+      setLast24hCount(d.currentCount);
+      setLastUpdate(new Date().toLocaleTimeString());
+      // Fetch full tweet text on new tweets (WS doesn't include tweet text)
+      if (d.delta > 0) fetchTweets();
+    }
+  }, [activeCount, fetchTweets]);
+
+  useMarketFeed(MARKET_ADDR, handleWsMessage);
 
   // Countdown
   useEffect(() => {

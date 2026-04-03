@@ -16,7 +16,7 @@ export function useMarkets(params?: MarketsListQuery) {
   return useQuery<MarketsListResponse>({
     queryKey: ["markets", page, pageSize, status],
     queryFn: () => apiGet<MarketsListResponse>(`/api/markets?${queryString}`),
-    staleTime: 10_000,
-    refetchInterval: 15_000,
+    staleTime: 30_000,
+    refetchInterval: 120_000, // Slow fallback — WS handles real-time
   });
 }

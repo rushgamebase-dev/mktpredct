@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { markets, counterState } from '@rush/shared/db/schema'
+import type { WsGlobalMessage } from '@rush/shared'
 import { db } from '../../db.js'
 import { broadcast } from '../../ws/broadcast.js'
 
@@ -142,9 +143,9 @@ async function pollTwitterSource(marketAddress: string, target: string): Promise
     console.error('[Twitter] DB update error:', e)
   }
 
-  // Broadcast via WebSocket
+  // Broadcast via WebSocket (per-market + global)
   if (delta !== 0 || !prev) {
-    broadcast.emit(marketAddress, {
+    const msg = {
       type: 'counter_update' as const,
       data: {
         currentCount: count,
@@ -153,7 +154,9 @@ async function pollTwitterSource(marketAddress: string, target: string): Promise
         lastEventAt,
         delta,
       },
-    })
+    }
+    broadcast.emit(marketAddress, msg)
+    broadcast.emit('__global', { ...msg, marketAddress } as WsGlobalMessage)
   }
 
   console.log(`[Twitter] @${target}: ${count} tweets today (Δ${delta > 0 ? '+' : ''}${delta}) | rate ${ratePerHour.toFixed(1)}/hr | projected ${projected}`)

@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMarkets } from "@/hooks/useMarkets";
+import { useGlobalFeed } from "@/hooks/useGlobalFeed";
 import { apiGet } from "@/lib/api";
 import MarketCard from "@/components/market/MarketCard";
 import { MarketCardSkeletonGrid } from "@/components/market/MarketCardSkeleton";
@@ -13,7 +15,7 @@ import NewsSidebar from "@/components/home/NewsSidebar";
 import { staggerContainer, tabContent } from "@/lib/animations";
 import { TrendingUp, CheckCircle, LayoutGrid, Zap, Activity } from "lucide-react";
 import { formatEth } from "@/lib/format";
-import type { MarketsListQuery, ChartResponse, OddsPoint } from "@rush/shared";
+import type { MarketsListQuery, ChartResponse, OddsPoint, WsGlobalMessage } from "@rush/shared";
 import { OUTCOME_COLORS } from "@rush/shared";
 
 // ---------------------------------------------------------------------------
@@ -50,6 +52,8 @@ const sectionVariants = {
 // ---------------------------------------------------------------------------
 
 export default function HomePage() {
+  const queryClient = useQueryClient();
+
   // Market selection / hover
   const [selectedMarket, setSelectedMarket] = useState<string | null>(null);
   const [hoveredMarket, setHoveredMarket] = useState<string | null>(null);
@@ -61,6 +65,9 @@ export default function HomePage() {
   // Chart data
   const [chartDataMap, setChartDataMap] = useState<Record<string, OddsPoint[]>>({});
 
+  // Last WS bet event (passed to LiveActivitySidebar for instant prepend)
+  const [lastWsBet, setLastWsBet] = useState<WsGlobalMessage | null>(null);
+
   const queryParams: MarketsListQuery = {
     page,
     pageSize: 20,
@@ -69,6 +76,37 @@ export default function HomePage() {
 
   const { data, isLoading, error } = useMarkets(queryParams);
   const markets = data?.markets ?? [];
+
+  // ---------------------------------------------------------------------------
+  // Global WS — real-time updates for home page
+  // ---------------------------------------------------------------------------
+  const handleGlobalMessage = useCallback((msg: WsGlobalMessage) => {
+    const addr = msg.marketAddress;
+    if (!addr) return;
+
+    switch (msg.type) {
+      case "bet":
+        // Pass to LiveActivitySidebar for instant prepend
+        setLastWsBet(msg);
+        // Refetch chart for this specific market
+        setChartDataMap((prev) => {
+          const next = { ...prev };
+          delete next[addr]; // Force refetch
+          return next;
+        });
+        break;
+      case "odds_update":
+        // Invalidate only the affected market in the list
+        queryClient.invalidateQueries({ queryKey: ["market", addr] });
+        break;
+      case "status_change":
+        // Market resolved/cancelled — refetch list
+        queryClient.invalidateQueries({ queryKey: ["markets"] });
+        break;
+    }
+  }, [queryClient]);
+
+  useGlobalFeed(handleGlobalMessage);
 
   // Hero chart: counter markets first (AIXBT etc), then by pool, max 5
   const heroMarkets = useMemo(
@@ -277,7 +315,7 @@ export default function HomePage() {
         {/* Activity sidebar -- desktop: full height, mobile: capped */}
         <div className="lg:col-span-3 max-h-[200px] lg:max-h-none">
           {markets.length > 0 ? (
-            <LiveActivitySidebar markets={markets} />
+            <LiveActivitySidebar markets={markets} lastWsBet={lastWsBet} />
           ) : (
             <div
               className="rounded-xl animate-pulse h-full"

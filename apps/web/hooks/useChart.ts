@@ -7,7 +7,7 @@ export function useChart(address: string) {
     queryKey: ["chart", address],
     queryFn: () => apiGet<ChartResponse>(`/api/markets/${address}/chart`),
     enabled: !!address,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: 30_000,
+    refetchInterval: false, // No polling — WS invalidation triggers refetch
   });
 }

@@ -1,17 +1,19 @@
 import { EventEmitter } from 'node:events'
-import type { WsServerMessage } from '@rush/shared'
+import type { WsServerMessage, WsGlobalMessage } from '@rush/shared'
+
+type BroadcastMessage = WsServerMessage | WsGlobalMessage
 
 class MarketBroadcast extends EventEmitter {
-  emit(marketAddress: string, message: WsServerMessage): boolean {
-    return super.emit(marketAddress, message)
+  emit(channel: string, message: BroadcastMessage): boolean {
+    return super.emit(channel, message)
   }
 
-  on(marketAddress: string, listener: (message: WsServerMessage) => void): this {
-    return super.on(marketAddress, listener)
+  on(channel: string, listener: (message: BroadcastMessage) => void): this {
+    return super.on(channel, listener)
   }
 
-  off(marketAddress: string, listener: (message: WsServerMessage) => void): this {
-    return super.off(marketAddress, listener)
+  off(channel: string, listener: (message: BroadcastMessage) => void): this {
+    return super.off(channel, listener)
   }
 }
 

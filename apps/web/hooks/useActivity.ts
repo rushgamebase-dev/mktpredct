@@ -7,7 +7,7 @@ export function useActivity(address: string) {
     queryKey: ["activity", address],
     queryFn: () => apiGet<ActivityResponse>(`/api/markets/${address}/activity`),
     enabled: !!address,
-    staleTime: 5_000,
-    refetchInterval: 10_000,
+    staleTime: 10_000,
+    refetchInterval: false, // No polling — WS delivers bets in real-time
   });
 }

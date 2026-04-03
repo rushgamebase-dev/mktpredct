@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { MarketSummary, BetEvent, ActivityResponse } from "@rush/shared";
+import type { MarketSummary, BetEvent, ActivityResponse, WsGlobalMessage } from "@rush/shared";
 import { OUTCOME_COLORS } from "@rush/shared";
 import { apiGet } from "@/lib/api";
 import { formatEth, formatAddress, timeAgo } from "@/lib/format";
 
 interface LiveActivitySidebarProps {
   markets: MarketSummary[];
+  lastWsBet?: WsGlobalMessage | null;
 }
 
 type FilterMode = "all" | "large";
@@ -36,19 +37,16 @@ const itemVariants = {
   exit: { opacity: 0, x: -20, height: 0, transition: { duration: 0.2 } },
 };
 
-export default function LiveActivitySidebar({ markets }: LiveActivitySidebarProps) {
+export default function LiveActivitySidebar({ markets, lastWsBet }: LiveActivitySidebarProps) {
   const [bets, setBets] = useState<MergedBet[]>([]);
   const [filter, setFilter] = useState<FilterMode>("all");
   const [loading, setLoading] = useState(true);
-  const fetchedRef = useRef(false);
 
-  // Fetch real bets from all markets
+  // Initial fetch — bootstrap with existing bets, no polling
   useEffect(() => {
-    if (fetchedRef.current || markets.length === 0) return;
-    fetchedRef.current = true;
+    if (markets.length === 0) return;
 
     const fetchAll = async () => {
-      setLoading(true);
       const merged: MergedBet[] = [];
       const results = await Promise.allSettled(
         markets.map(async (m, mIdx) => {
@@ -68,10 +66,41 @@ export default function LiveActivitySidebar({ markets }: LiveActivitySidebarProp
       setBets(merged.slice(0, 15));
       setLoading(false);
     };
+
     fetchAll();
   }, [markets]);
 
-  // NO FAKE BETS — only real data from API
+  // Real-time: prepend WS bet events instantly (no polling needed)
+  useEffect(() => {
+    if (!lastWsBet || lastWsBet.type !== "bet") return;
+
+    const data = lastWsBet.data as {
+      user: string;
+      outcomeIndex: number;
+      amount: string;
+      txHash: string;
+      timestamp: number;
+    };
+    const addr = lastWsBet.marketAddress;
+    const market = markets.find((m) => m.address === addr);
+
+    const newBet: MergedBet = {
+      id: 0,
+      marketAddress: addr,
+      blockNumber: 0,
+      user: data.user,
+      outcomeIndex: data.outcomeIndex,
+      amount: data.amount,
+      txHash: data.txHash,
+      timestamp: data.timestamp,
+      marketQuestion: market?.question ?? addr.slice(0, 10),
+      marketColor: OUTCOME_COLORS[0],
+      outcomeLabel: market?.labels[data.outcomeIndex] ?? `Outcome ${data.outcomeIndex}`,
+    };
+
+    setBets((prev) => [newBet, ...prev].slice(0, 15));
+    setLoading(false);
+  }, [lastWsBet, markets]);
 
   const filteredBets = filter === "large" ? bets.filter((b) => isLargeBet(b.amount)) : bets;
 
@@ -109,7 +138,7 @@ export default function LiveActivitySidebar({ markets }: LiveActivitySidebarProp
         ) : (
           <AnimatePresence initial={false}>
             {filteredBets.map((bet) => (
-              <motion.div key={`${bet.id}-${bet.txHash}`} variants={itemVariants} initial="initial" animate="animate" exit="exit" layout
+              <motion.div key={`${bet.txHash}-${bet.timestamp}`} variants={itemVariants} initial="initial" animate="animate" exit="exit" layout
                 className="flex items-start gap-2 py-2 border-b" style={{ borderColor: "rgba(255,255,255,0.03)" }}>
                 <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full shrink-0"
                   style={{ background: OUTCOME_COLORS[bet.outcomeIndex % OUTCOME_COLORS.length] }} />

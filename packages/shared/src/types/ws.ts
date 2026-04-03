@@ -46,3 +46,6 @@ export type WsServerMessage =
 			type: 'error'
 			data: { message: string }
 	  }
+
+// Global feed wraps any server message with the market address
+export type WsGlobalMessage = WsServerMessage & { marketAddress: string }

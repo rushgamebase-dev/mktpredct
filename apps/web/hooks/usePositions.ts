@@ -13,7 +13,7 @@ export function usePositions(marketAddress: string) {
         `/api/markets/${marketAddress}/positions/${address}`,
       ),
     enabled: !!marketAddress && !!address,
-    staleTime: 5_000,
-    refetchInterval: 10_000,
+    staleTime: 10_000,
+    refetchInterval: 120_000, // Slow fallback — WS invalidation handles real-time
   });
 }

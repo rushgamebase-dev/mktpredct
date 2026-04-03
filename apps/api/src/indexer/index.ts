@@ -1,9 +1,10 @@
-import { publicClient } from '../services/chain.js'
+import { publicClient, wsPublicClient } from '../services/chain.js'
 import { syncFactory } from './factory-indexer.js'
 import { syncMarkets } from './market-indexer.js'
 
 const CONFIRMATION_BLOCKS = 5n
-const POLL_INTERVAL = 2000
+// WS available → slow fallback (30s). No WS → primary polling (2s).
+const POLL_INTERVAL = wsPublicClient ? 30_000 : 2000
 
 let running = false
 
@@ -30,7 +31,8 @@ async function tick(): Promise<void> {
 }
 
 export function startIndexer(): void {
-  console.log('[Indexer] Starting indexer loop (every 2s)')
+  const mode = wsPublicClient ? 'fallback (30s)' : 'primary (2s)'
+  console.log(`[Indexer] Starting indexer loop — ${mode}`)
   tick()
   setInterval(tick, POLL_INTERVAL)
 }
