@@ -1,0 +1,455 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Dark mode (default) ===== */
+:root {
+  --background: #0a0a0a;
+  --surface: #111111;
+  --border: #1a1a1a;
+  --primary: #00ff88;
+  --danger: #ff4444;
+  --gold: #ffd700;
+  --text: #e0e0e0;
+  --muted: #666666;
+}
+
+/* ===== Light mode overrides ===== */
+.light {
+  --background: #f5f5f5;
+  --surface: #ffffff;
+  --border: #e0e0e0;
+  --primary: #00cc6a;
+  --danger: #dd3333;
+  --gold: #cc9900;
+  --text: #1a1a1a;
+  --muted: #888888;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ===== Custom scrollbar ===== */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}
+
+.light ::-webkit-scrollbar-track {
+  background: #eeeeee;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: #cccccc;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #aaaaaa;
+}
+
+/* ===== Glass effect ===== */
+.glass {
+  background: rgba(17, 17, 17, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.light .glass {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* ===== Neon glow effects ===== */
+.neon-green {
+  color: var(--primary);
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+}
+
+.neon-glow {
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.3), 0 0 20px rgba(0, 255, 136, 0.1);
+}
+
+.neon-glow-danger {
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.3), 0 0 20px rgba(255, 68, 68, 0.1);
+}
+
+.light .neon-green {
+  text-shadow: none;
+}
+
+.light .neon-glow {
+  box-shadow: 0 2px 8px rgba(0, 204, 106, 0.2);
+}
+
+.light .neon-glow-danger {
+  box-shadow: 0 2px 8px rgba(221, 51, 51, 0.2);
+}
+
+/* ===== Live pulse dot ===== */
+@keyframes livePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+}
+
+.live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: livePulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(255, 68, 68, 0.9);
+}
+
+.live-dot-green {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: livePulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.9);
+}
+
+.light .live-dot {
+  box-shadow: 0 0 4px rgba(221, 51, 51, 0.5);
+}
+
+.light .live-dot-green {
+  box-shadow: 0 0 4px rgba(0, 204, 106, 0.5);
+}
+
+/* ===== Number / monospace font ===== */
+.num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Fade in up ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s ease-out forwards;
+}
+
+/* ===== Slide in ===== */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.25s ease-out forwards;
+}
+
+/* ===== Bet flash highlight ===== */
+@keyframes betFlash {
+  0% { background: rgba(0, 255, 136, 0.12); }
+  100% { background: transparent; }
+}
+
+.bet-flash {
+  animation: betFlash 0.8s ease-out;
+}
+
+.light .bet-flash {
+  animation: betFlashLight 0.8s ease-out;
+}
+
+@keyframes betFlashLight {
+  0% { background: rgba(0, 204, 106, 0.15); }
+  100% { background: transparent; }
+}
+
+/* ===== Surface card ===== */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.light .card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== Input base ===== */
+.input-base {
+  background: #0d0d0d;
+  border: 1px solid var(--border);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input-base:focus {
+  border-color: rgba(0, 255, 136, 0.4);
+}
+
+.light .input-base {
+  background: #ffffff;
+  border-color: #d0d0d0;
+}
+
+.light .input-base:focus {
+  border-color: rgba(0, 204, 106, 0.6);
+}
+
+/* ===== Button primary ===== */
+.btn-primary {
+  background: var(--primary);
+  color: #000;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #00cc70;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.light .btn-primary:hover:not(:disabled) {
+  box-shadow: 0 2px 12px rgba(0, 204, 106, 0.3);
+}
+
+/* ===== Odds change flash ===== */
+@keyframes oddsFlash {
+  0% { color: #ffd700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.8); }
+  100% { color: inherit; text-shadow: none; }
+}
+
+.odds-flash {
+  animation: oddsFlash 0.7s ease-out;
+}
+
+.light .odds-flash {
+  animation: oddsFlashLight 0.7s ease-out;
+}
+
+@keyframes oddsFlashLight {
+  0% { color: #cc9900; text-shadow: none; font-weight: 800; }
+  100% { color: inherit; font-weight: inherit; }
+}
+
+/* ===== Progress bars (Yes / No) ===== */
+.progress-yes {
+  background: linear-gradient(90deg, rgba(0, 255, 136, 0.9), rgba(0, 255, 136, 0.5));
+}
+
+.progress-no {
+  background: linear-gradient(90deg, rgba(255, 68, 68, 0.9), rgba(255, 68, 68, 0.5));
+}
+
+.light .progress-yes {
+  background: linear-gradient(90deg, rgba(0, 204, 106, 0.8), rgba(0, 204, 106, 0.4));
+}
+
+.light .progress-no {
+  background: linear-gradient(90deg, rgba(221, 51, 51, 0.8), rgba(221, 51, 51, 0.4));
+}
+
+/* ===== Tabular numbers ===== */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ===== Skeleton / shimmer ===== */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface) 25%, #1a1a1a 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+.light .skeleton {
+  background: linear-gradient(90deg, #eeeeee 25%, #dddddd 50%, #eeeeee 75%);
+  background-size: 200% 100%;
+}
+
+/* ===== Category badge ===== */
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(0, 255, 136, 0.1);
+  color: var(--primary);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+.light .category-badge {
+  background: rgba(0, 204, 106, 0.08);
+  border-color: rgba(0, 204, 106, 0.2);
+}
+
+/* ===== Hot badge with pulse ===== */
+@keyframes hotPulse {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(255, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(255, 68, 68, 0.8), 0 0 24px rgba(255, 68, 68, 0.3);
+  }
+}
+
+.hot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(255, 68, 68, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  animation: hotPulse 2s ease-in-out infinite;
+}
+
+.light .hot-badge {
+  background: rgba(221, 51, 51, 0.08);
+  border-color: rgba(221, 51, 51, 0.2);
+  animation: hotPulseLight 2s ease-in-out infinite;
+}
+
+@keyframes hotPulseLight {
+  0%, 100% {
+    box-shadow: 0 0 2px rgba(221, 51, 51, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 8px rgba(221, 51, 51, 0.4);
+  }
+}
+
+/* ===== Tile hover ===== */
+.tile-hover {
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.tile-hover:hover {
+  transform: scale(1.08);
+  z-index: 10;
+}
+
+/* ===== CRT scanlines overlay ===== */
+.crt-lines {
+  position: relative;
+}
+
+.crt-lines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.06) 2px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ===== Result reveal animations ===== */
+@keyframes resultRevealFlash {
+  0%   { background: rgba(0, 170, 255, 0.22); }
+  60%  { background: rgba(0, 170, 255, 0.10); }
+  100% { background: rgba(0, 170, 255, 0.06); }
+}
+
+.result-reveal-flash {
+  animation: resultRevealFlash 1.2s ease-out forwards;
+}
+
+@keyframes resultCountPop {
+  0%   { opacity: 0; transform: scale(0.82); }
+  55%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.result-count-pop {
+  animation: resultCountPop 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ===== Starting soon pulse ===== */
+@keyframes startingSoonPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+.starting-soon-pulse {
+  animation: startingSoonPulse 1.6s ease-in-out infinite;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

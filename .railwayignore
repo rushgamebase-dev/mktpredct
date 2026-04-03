@@ -1,0 +1,7 @@
+apps/web
+modelo
+contracts
+node_modules
+.next
+.git
+pnpm-lock.yaml
