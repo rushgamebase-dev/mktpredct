@@ -127,12 +127,15 @@ export default function AixbtDemoPage() {
 
   // Narrative
   const narrative = useMemo(() => {
-    if (isHit) return "🎉 THRESHOLD HIT! @aixbt_agent crossed 20 tweets.";
-    if (isClutch) return `🔥 CLUTCH ZONE — needs ${THRESHOLD - activeCount} more tweet${THRESHOLD - activeCount === 1 ? "" : "s"}!`;
-    if (pace.status === "ahead") return "📈 Ahead of pace. YES looking strong.";
-    if (pace.status === "on_track") return "⚡ On track. Could go either way.";
-    if (activeCount === 0) return "🕐 Waiting for first tweet of the day...";
-    return `📊 Behind pace. Needs ${pace.remaining} tweets in ${Math.ceil(hoursLeft)}h.`;
+    if (isHit) return "🎉 THRESHOLD HIT! @aixbt_agent crossed 20 tweets. YES wins.";
+    if (isClutch && pace.status !== "behind") return `🔥 ${THRESHOLD - activeCount} to go! Pace is hot — this could flip any minute.`;
+    if (isClutch) return `⚠️ CLUTCH — needs ${THRESHOLD - activeCount} more in ${Math.ceil(hoursLeft)}h. Will AIXBT deliver?`;
+    if (pace.status === "ahead") return `📈 Ahead of pace! Projected ${pace.projected} tweets. YES holders looking strong.`;
+    if (pace.status === "on_track") return "⚡ On track — projected to just barely hit. Every tweet counts now.";
+    if (recentCount >= 3) return `🔥 ${recentCount} tweets in last 30 min! Momentum is building fast.`;
+    if (activeCount === 0) return "🕐 Waiting for first tweet... clock is ticking.";
+    if (hoursLeft < 6) return `⏳ Only ${Math.ceil(hoursLeft)}h left. Needs ${pace.remaining} tweets at ${pace.neededPerHour.toFixed(1)}/hr to hit.`;
+    return `📊 Behind pace. Needs ${pace.remaining} tweets in ${Math.ceil(hoursLeft)}h. NO looking stronger.`;
   }, [activeCount, pace, isClutch, isHit, hoursLeft]);
 
   const paceColor = pace.status === "hit" ? "#00ff88" : pace.status === "ahead" ? "#00ff88" : pace.status === "on_track" ? "#ffc828" : "#ff4444";
@@ -248,7 +251,7 @@ export default function AixbtDemoPage() {
             )}
 
             {/* Smart progress bar */}
-            <div className="mt-4 h-4 rounded-full overflow-hidden relative" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <div className={`mt-4 h-4 rounded-full overflow-hidden relative ${newTweetFlash ? "neon-glow" : ""}`} style={{ background: "rgba(255,255,255,0.06)", transition: "box-shadow 0.3s" }}>
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
@@ -291,6 +294,38 @@ export default function AixbtDemoPage() {
                   {pace.remaining <= 0 ? "—" : pace.neededPerHour.toFixed(1)}
                 </div>
               </div>
+            </div>
+
+            {/* YES/NO — right after counter for impulse */}
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <motion.button
+                whileHover={{ scale: 1.03, boxShadow: "0 0 20px rgba(59,130,246,0.3)" }}
+                whileTap={{ scale: 0.97 }}
+                className="rounded-xl py-3 text-center transition-all cursor-pointer"
+                style={{ background: "#3B82F615", border: "2px solid #3B82F650" }}
+              >
+                <div className="text-xs text-gray-400">Yes (20+)</div>
+                <motion.div key={`y${Math.round(dynamicYes)}`} initial={{ scale: 1.15 }} animate={{ scale: 1 }} className="text-2xl font-black tabular" style={{ color: "#3B82F6" }}>
+                  {Math.round(dynamicYes)}%
+                </motion.div>
+                <div className="text-[10px] font-bold" style={{ color: "#3B82F6aa" }}>Win ~{(100 / dynamicYes).toFixed(1)}x</div>
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.03, boxShadow: "0 0 20px rgba(239,68,68,0.3)" }}
+                whileTap={{ scale: 0.97 }}
+                className="rounded-xl py-3 text-center transition-all cursor-pointer"
+                style={{ background: "#EF444415", border: "2px solid #EF444450" }}
+              >
+                <div className="text-xs text-gray-400">No (under 20)</div>
+                <motion.div key={`n${Math.round(dynamicNo)}`} initial={{ scale: 1.15 }} animate={{ scale: 1 }} className="text-2xl font-black tabular" style={{ color: "#EF4444" }}>
+                  {Math.round(dynamicNo)}%
+                </motion.div>
+                <div className="text-[10px] font-bold" style={{ color: "#EF4444aa" }}>Win ~{(100 / dynamicNo).toFixed(1)}x</div>
+              </motion.button>
+            </div>
+            <div className="mt-2 text-center text-[10px] text-gray-600 flex items-center justify-center gap-1.5">
+              <Users className="h-3 w-3" />
+              {dynamicYes > 60 ? "Most bettors are on YES" : dynamicNo > 60 ? "Most bettors are on NO" : "Market is split — your bet could tip it"}
             </div>
           </div>
 
@@ -388,32 +423,7 @@ export default function AixbtDemoPage() {
             </div>
           )}
 
-          {/* Odds */}
-          <div className="card p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Live Odds (simulated)</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <motion.div layout className="rounded-xl p-4 text-center transition-all" style={{ background: "#3B82F612", border: "2px solid #3B82F640" }}>
-                <div className="text-xs text-gray-400">Yes (20+)</div>
-                <motion.div key={Math.round(dynamicYes)} initial={{ scale: 1.1 }} animate={{ scale: 1 }} className="text-3xl font-black tabular" style={{ color: "#3B82F6" }}>
-                  {Math.round(dynamicYes)}%
-                </motion.div>
-                <div className="text-[10px] font-bold mt-1" style={{ color: "#3B82F6aa" }}>Win ~{(100 / dynamicYes).toFixed(1)}x</div>
-              </motion.div>
-              <motion.div layout className="rounded-xl p-4 text-center transition-all" style={{ background: "#EF444412", border: "2px solid #EF444440" }}>
-                <div className="text-xs text-gray-400">No (under 20)</div>
-                <motion.div key={Math.round(dynamicNo)} initial={{ scale: 1.1 }} animate={{ scale: 1 }} className="text-3xl font-black tabular" style={{ color: "#EF4444" }}>
-                  {Math.round(dynamicNo)}%
-                </motion.div>
-                <div className="text-[10px] font-bold mt-1" style={{ color: "#EF4444aa" }}>Win ~{(100 / dynamicNo).toFixed(1)}x</div>
-              </motion.div>
-            </div>
-
-            {/* Psych hack */}
-            <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-gray-500">
-              <Users className="h-3 w-3" />
-              {dynamicYes > 60 ? "Most bettors are on YES" : dynamicNo > 60 ? "Most bettors are on NO" : "Market is split — your bet matters"}
-            </div>
-          </div>
+          {/* odds moved inside counter card above */}
         </div>
 
         {/* Right: Tweet feed */}
