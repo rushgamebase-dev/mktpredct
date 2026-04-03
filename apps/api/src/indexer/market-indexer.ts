@@ -6,7 +6,7 @@ import { db } from '../db.js'
 import { publicClient } from '../services/chain.js'
 import { broadcast } from '../ws/broadcast.js'
 
-const BATCH_SIZE = 9n // Alchemy free tier: max 10 blocks per eth_getLogs
+const BATCH_SIZE = 90n // Chainstack: max ~100 blocks per eth_getLogs
 
 function computeOdds(totalPerOutcome: string[], totalPool: string): number[] {
   const pool = BigInt(totalPool)
