@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import type { WsServerMessage } from "@rush/shared";
@@ -27,6 +27,7 @@ export default function MarketDetailPage() {
   const params = useParams();
   const address = params.address as string;
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data: market, isLoading: marketLoading, error: marketError } = useMarket(address);
   const { data: chartData } = useChart(address);
@@ -145,6 +146,13 @@ export default function MarketDetailPage() {
         color: colors[b.outcomeIndex] ?? "#ffc828",
       }));
   }, [activity, market, colors]);
+
+  // Counter markets → redirect to dedicated counter layout
+  useEffect(() => {
+    if (market?.marketType === "counter") {
+      router.replace("/demo/aixbt");
+    }
+  }, [market?.marketType, router]);
 
   // Loading skeleton
   if (marketLoading) {
