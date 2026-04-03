@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowLeft, Clock, TrendingUp, Zap, AlertTriangle, Target, Users } from "lucide-react";
 import MarketComments from "@/components/market/MarketComments";
 import RelatedMarkets from "@/components/market/RelatedMarkets";
+import BetForm from "@/components/market/BetForm";
 import { useMarket } from "@/hooks/useMarket";
 import { useMarkets } from "@/hooks/useMarkets";
 import { useMarketFeed } from "@/hooks/useMarketFeed";
@@ -44,6 +45,7 @@ export default function CounterMarketPage() {
   const [recentCount, setRecentCount] = useState(0);
   const [lastTweetTime, setLastTweetTime] = useState<string | null>(null);
 
+  const [showBetForm, setShowBetForm] = useState(false);
   const activeCount = period === "today" ? todayCount : last24hCount;
 
   // Real market data for comments + related
@@ -349,6 +351,7 @@ export default function CounterMarketPage() {
               <motion.button
                 whileHover={{ scale: 1.04, boxShadow: "0 0 30px rgba(59,130,246,0.35)" }}
                 whileTap={{ scale: 0.96 }}
+                onClick={() => setShowBetForm(true)}
                 className="rounded-xl py-4 text-center cursor-pointer"
                 style={{ background: "#3B82F618", border: "2px solid #3B82F660", transition: "all 0.15s" }}
               >
@@ -361,6 +364,7 @@ export default function CounterMarketPage() {
               <motion.button
                 whileHover={{ scale: 1.04, boxShadow: "0 0 30px rgba(239,68,68,0.35)" }}
                 whileTap={{ scale: 0.96 }}
+                onClick={() => setShowBetForm(true)}
                 className="rounded-xl py-4 text-center cursor-pointer"
                 style={{ background: "#EF444418", border: "2px solid #EF444460", transition: "all 0.15s" }}
               >
@@ -375,6 +379,27 @@ export default function CounterMarketPage() {
               <Users className="h-3 w-3" />
               {dynamicYes > 60 ? "Most bettors are on YES" : dynamicNo > 60 ? "Most bettors are on NO" : "Market is split — your bet could tip it"}
             </div>
+
+            {/* Bet Form — shown after clicking YES/NO */}
+            <AnimatePresence>
+              {showBetForm && marketData && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-3 overflow-hidden"
+                >
+                  <BetForm
+                    marketAddress={MARKET_ADDR}
+                    labels={marketData.labels ?? ["Yes", "No"]}
+                    odds={marketData.odds ?? [50, 50]}
+                    status={marketData.status ?? "open"}
+                    totalPool={marketData.totalPool}
+                    totalPerOutcome={marketData.totalPerOutcome}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Recent activity + last tweet */}
