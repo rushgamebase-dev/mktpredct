@@ -32,9 +32,7 @@ async function fetchNews(): Promise<NewsArticle[]> {
       imageUrl: item.thumb_2x ?? '',
       url: item.url ?? '',
       category: (item.categories ?? []).join(', ') || 'Crypto',
-      publishedAt: item.updated_at
-        ? Math.floor(new Date(item.updated_at).getTime() / 1000)
-        : Math.floor(Date.now() / 1000),
+      publishedAt: item.updated_at ?? Math.floor(Date.now() / 1000),
     }))
 
     cache = { articles, fetchedAt: Date.now() }
