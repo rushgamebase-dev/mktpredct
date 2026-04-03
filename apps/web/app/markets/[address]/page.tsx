@@ -37,6 +37,7 @@ export default function MarketDetailPage() {
   // WebSocket: update cache directly with WS payload (no stale DB refetch)
   const handleWsMessage = useCallback(
     (msg: WsServerMessage) => {
+      console.log(`[WS_UI] received: ${msg.type}`, msg.type === "bet" ? `tx=${(msg.data as any).txHash?.slice(0, 10)}` : "");
       if (msg.type === "odds_update") {
         // Use WS payload directly — faster than invalidate→refetch from DB
         queryClient.setQueryData(["market", address], (old: any) => {

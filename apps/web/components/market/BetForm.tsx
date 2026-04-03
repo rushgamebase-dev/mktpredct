@@ -39,6 +39,7 @@ export default function BetForm({
   // Optimistic update when tx is submitted (hash received, before on-chain confirm)
   useEffect(() => {
     if (!hash || !amount || !totalPool || !totalPerOutcome) return;
+    console.log(`[BET_UI] optimistic_update | hash=${hash.slice(0, 10)} | outcome=${selectedOutcome} | amount=${amount}`);
     const betWei = parseEther(amount)
     const newPool = (BigInt(totalPool) + betWei).toString()
     const newPerOutcome = totalPerOutcome.map((v, i) =>
