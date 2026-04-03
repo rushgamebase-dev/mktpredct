@@ -4,7 +4,7 @@ import type { WsGlobalMessage } from '@rush/shared'
 import { db } from '../../db.js'
 import { broadcast } from '../../ws/broadcast.js'
 
-const TWITTER_API_KEY = 'new1_3885f5f64e984cb2b45d5d8e0bb0899c'
+const TWITTER_API_KEY = process.env.TWITTER_API_KEY || ''
 const POLL_INTERVAL = 60_000 // 60 seconds
 
 interface TweetData {
