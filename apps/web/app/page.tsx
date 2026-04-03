@@ -377,28 +377,37 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[
-            { tag: "Base", color: "#3B82F6", title: "Base surpasses 200M total transactions as ecosystem grows", source: "The Block" },
-            { tag: "DeFi", color: "#00ff88", title: "Coinbase expands Base ecosystem with new institutional partnerships", source: "CoinDesk" },
-            { tag: "ETH", color: "#8B5CF6", title: "ETH staking yields attract institutional capital amid market shift", source: "Bloomberg" },
-            { tag: "Regulation", color: "#ffc828", title: "US House committee advances stablecoin framework legislation", source: "Reuters" },
-            { tag: "AI", color: "#EC4899", title: "AI-powered DeFi protocols see surge in adoption on L2 networks", source: "Decrypt" },
-            { tag: "Markets", color: "#EF4444", title: "DeFi protocols on Base reach $3B TVL milestone in record time", source: "DeFi Llama" },
+            { tag: "Base", color: "#3B82F6", icon: "🔵", title: "Base surpasses 200M total transactions as ecosystem grows", source: "The Block" },
+            { tag: "DeFi", color: "#00ff88", icon: "🏦", title: "Coinbase expands Base ecosystem with new institutional partnerships", source: "CoinDesk" },
+            { tag: "ETH", color: "#8B5CF6", icon: "⟠", title: "ETH staking yields attract institutional capital amid market shift", source: "Bloomberg" },
+            { tag: "Regulation", color: "#ffc828", icon: "🗳️", title: "US House committee advances stablecoin framework legislation", source: "Reuters" },
+            { tag: "AI", color: "#EC4899", icon: "🤖", title: "AI-powered DeFi protocols see surge in adoption on L2 networks", source: "Decrypt" },
+            { tag: "Markets", color: "#EF4444", icon: "📈", title: "DeFi protocols on Base reach $3B TVL milestone in record time", source: "DeFi Llama" },
           ].map((item, i) => (
             <div
               key={i}
-              className="rounded-xl p-4 transition-all duration-150 hover:scale-[1.02]"
+              className="rounded-xl overflow-hidden transition-all duration-150 hover:scale-[1.02]"
               style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <span
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: item.color + "15", color: item.color }}
-                >
-                  {item.tag}
-                </span>
-                <span className="text-[10px] text-gray-600">{item.source}</span>
+              {/* Color accent bar */}
+              <div style={{ height: 3, background: `linear-gradient(90deg, ${item.color}, ${item.color}00)` }} />
+              <div className="p-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl shrink-0 mt-0.5">{item.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ background: item.color + "15", color: item.color }}
+                      >
+                        {item.tag}
+                      </span>
+                      <span className="text-[10px] text-gray-600">{item.source}</span>
+                    </div>
+                    <p className="text-xs font-medium text-gray-300 leading-relaxed">{item.title}</p>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs font-medium text-gray-300 leading-relaxed">{item.title}</p>
             </div>
           ))}
         </div>
