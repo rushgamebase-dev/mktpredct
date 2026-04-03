@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { MarketSummary, BetEvent, ActivityResponse, WsGlobalMessage } from "@rush/shared";
 import { OUTCOME_COLORS } from "@rush/shared";
 import { apiGet } from "@/lib/api";
+import Link from "next/link";
 import { formatEth, formatAddress, timeAgo } from "@/lib/format";
 
 interface LiveActivitySidebarProps {
@@ -150,10 +151,28 @@ export default function LiveActivitySidebar({ markets, lastWsBet }: LiveActivity
                       {bet.outcomeLabel}
                     </span>
                     <span className="text-gray-600">on</span>
-                    <span className="text-gray-400 truncate">{shortQuestion(bet.marketQuestion)}</span>
+                    <Link href={`/markets/${bet.marketAddress}`} className="text-gray-400 truncate hover:text-gray-200 transition-colors">
+                      {shortQuestion(bet.marketQuestion)}
+                    </Link>
                   </div>
-                  <div className="text-[10px] text-gray-600 mt-0.5">
-                    {formatAddress(bet.user)} · {timeAgo(bet.timestamp)}
+                  <div className="flex items-center gap-1 text-[10px] text-gray-600 mt-0.5">
+                    <span>{formatAddress(bet.user)}</span>
+                    <span>·</span>
+                    <span>{timeAgo(bet.timestamp)}</span>
+                    {bet.txHash && bet.txHash !== "" && (
+                      <>
+                        <span>·</span>
+                        <a
+                          href={`https://basescan.org/tx/${bet.txHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-gray-400 transition-colors"
+                          style={{ color: "#3B82F6" }}
+                        >
+                          tx
+                        </a>
+                      </>
+                    )}
                   </div>
                 </div>
               </motion.div>
