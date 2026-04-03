@@ -4,7 +4,7 @@ import { syncMarkets } from './market-indexer.js'
 
 const CONFIRMATION_BLOCKS = 5n
 // WS available → slow fallback (30s). No WS → primary polling (2s).
-const POLL_INTERVAL = wsPublicClient ? 30_000 : 2000
+const POLL_INTERVAL = wsPublicClient ? 10_000 : 2000
 
 let running = false
 

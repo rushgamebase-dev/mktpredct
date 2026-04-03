@@ -21,7 +21,7 @@ const blockBuffer = new Map<bigint, Array<{
 }>>()
 
 let flushTimer: ReturnType<typeof setTimeout> | null = null
-const FLUSH_DELAY = 50 // ms — flush after block settles
+const FLUSH_DELAY = 10 // ms — flush after block settles
 
 async function flushBlock(blockNumber: bigint): Promise<void> {
   const events = blockBuffer.get(blockNumber)

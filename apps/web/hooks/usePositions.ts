@@ -14,6 +14,6 @@ export function usePositions(marketAddress: string) {
       ),
     enabled: !!marketAddress && !!address,
     staleTime: 10_000,
-    refetchInterval: 120_000, // Slow fallback — WS invalidation handles real-time
+    refetchInterval: 30_000, // Safety net if WS drops
   });
 }

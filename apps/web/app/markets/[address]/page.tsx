@@ -34,12 +34,25 @@ export default function MarketDetailPage() {
   const { data: allMarketsData } = useMarkets({ page: 1, pageSize: 20, status: "all" });
   const allMarkets = allMarketsData?.markets ?? [];
 
-  // WebSocket: invalidate queries on real-time updates
+  // WebSocket: update cache directly with WS payload (no stale DB refetch)
   const handleWsMessage = useCallback(
     (msg: WsServerMessage) => {
-      if (msg.type === "odds_update" || msg.type === "bet") {
-        queryClient.invalidateQueries({ queryKey: ["market", address] });
+      if (msg.type === "odds_update") {
+        // Use WS payload directly — faster than invalidate→refetch from DB
+        queryClient.setQueryData(["market", address], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            totalPool: msg.data.totalPool,
+            totalPerOutcome: msg.data.totalPerOutcome,
+            odds: msg.data.odds,
+          };
+        });
+      }
+      if (msg.type === "bet") {
+        // Chart needs full reconstruction from DB
         queryClient.invalidateQueries({ queryKey: ["chart", address] });
+        // Positions need fresh on-chain read
         queryClient.invalidateQueries({ queryKey: ["positions", address] });
       }
       if (msg.type === "status_change") {
@@ -495,6 +508,8 @@ export default function MarketDetailPage() {
               labels={market.labels}
               odds={market.odds}
               status={market.status}
+              totalPool={market.totalPool}
+              totalPerOutcome={market.totalPerOutcome}
             />
           </div>
 

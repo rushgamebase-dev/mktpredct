@@ -89,19 +89,21 @@ export default function HomePage() {
 
     switch (msg.type) {
       case "bet":
-        // Pass to LiveActivitySidebar for instant prepend
         setLastWsBet(msg);
-        // Refetch chart for this specific market
-        setChartDataMap((prev) => {
-          const next = { ...prev };
-          delete next[addr]; // Force refetch
-          return next;
-        });
         break;
       case "odds_update":
-        // Invalidate the specific market AND the markets list
-        queryClient.invalidateQueries({ queryKey: ["market", addr] });
-        queryClient.invalidateQueries({ queryKey: ["markets"] });
+        // Update markets list cache directly with WS payload
+        queryClient.setQueryData(["markets", page, 20, status === "all" ? "all" : status], (old: any) => {
+          if (!old?.markets) return old;
+          return {
+            ...old,
+            markets: old.markets.map((m: any) =>
+              m.address === addr
+                ? { ...m, totalPool: msg.data.totalPool, totalPerOutcome: msg.data.totalPerOutcome, odds: msg.data.odds }
+                : m
+            ),
+          };
+        });
         break;
       case "status_change":
         queryClient.invalidateQueries({ queryKey: ["markets"] });
@@ -110,7 +112,7 @@ export default function HomePage() {
         queryClient.invalidateQueries({ queryKey: ["markets"] });
         break;
     }
-  }, [queryClient]);
+  }, [queryClient, page, status]);
 
   useGlobalFeed(handleGlobalMessage);
 

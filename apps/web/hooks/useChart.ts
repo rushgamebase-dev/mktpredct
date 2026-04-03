@@ -8,6 +8,6 @@ export function useChart(address: string) {
     queryFn: () => apiGet<ChartResponse>(`/api/markets/${address}/chart`),
     enabled: !!address,
     staleTime: 30_000,
-    refetchInterval: false, // No polling — WS invalidation triggers refetch
+    refetchInterval: 60_000, // Safety net if WS drops
   });
 }

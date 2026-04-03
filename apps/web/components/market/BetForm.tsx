@@ -1,17 +1,22 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
+import { parseEther } from "viem";
 import { motion, AnimatePresence } from "framer-motion";
 import { OUTCOME_COLORS } from "@rush/shared";
+import type { MarketDetailResponse } from "@rush/shared";
 import { useBet } from "@/hooks/useBet";
-import { Loader2, Check, AlertCircle } from "lucide-react";
+import { Loader2, Check, AlertCircle, ExternalLink } from "lucide-react";
 
 interface BetFormProps {
   marketAddress: string;
   labels: string[];
   odds: number[];
   status: string;
+  totalPool?: string;
+  totalPerOutcome?: string[];
 }
 
 export default function BetForm({
@@ -19,14 +24,36 @@ export default function BetForm({
   labels,
   odds,
   status,
+  totalPool,
+  totalPerOutcome,
 }: BetFormProps) {
   const { isConnected } = useAccount();
-  const { placeBet, isPending, isSuccess, error, reset } = useBet(marketAddress);
+  const queryClient = useQueryClient();
+  const { placeBet, hash, isWalletOpen, isConfirming, isPending, isSuccess, error, reset } = useBet(marketAddress);
 
   const [selectedOutcome, setSelectedOutcome] = useState<number>(0);
   const [amount, setAmount] = useState("");
 
   const isOpen = status === "open";
+
+  // Optimistic update when tx is submitted (hash received, before on-chain confirm)
+  useEffect(() => {
+    if (!hash || !amount || !totalPool || !totalPerOutcome) return;
+    const betWei = parseEther(amount)
+    const newPool = (BigInt(totalPool) + betWei).toString()
+    const newPerOutcome = totalPerOutcome.map((v, i) =>
+      i === selectedOutcome ? (BigInt(v) + betWei).toString() : v
+    )
+    const pool = BigInt(newPool)
+    const newOdds = pool === 0n
+      ? newPerOutcome.map(() => 0)
+      : newPerOutcome.map((v) => Number((BigInt(v) * 10000n) / pool) / 100)
+
+    queryClient.setQueryData(["market", marketAddress], (old: any) => {
+      if (!old) return old
+      return { ...old, totalPool: newPool, totalPerOutcome: newPerOutcome, odds: newOdds }
+    })
+  }, [hash]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,7 +208,7 @@ export default function BetForm({
           </div>
         )}
 
-        {/* Submit button */}
+        {/* Submit button — 4 clear states */}
         <AnimatePresence mode="wait">
           {isSuccess ? (
             <motion.button
@@ -199,8 +226,27 @@ export default function BetForm({
               }}
             >
               <Check className="h-4 w-4" />
-              Bet Placed! Bet Again?
+              Bet Confirmed! Bet Again?
             </motion.button>
+          ) : isConfirming && hash ? (
+            <motion.div key="pending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <div
+                className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-bold"
+                style={{ background: "rgba(59,130,246,0.12)", color: "#3B82F6", border: "1px solid rgba(59,130,246,0.25)" }}
+              >
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Tx pending...
+              </div>
+              <a
+                href={`https://basescan.org/tx/${hash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1.5 flex items-center justify-center gap-1 text-[10px] transition-colors hover:text-blue-300"
+                style={{ color: "#3B82F6" }}
+              >
+                View on BaseScan <ExternalLink className="h-2.5 w-2.5" />
+              </a>
+            </motion.div>
           ) : (
             <motion.button
               key="submit"
@@ -211,10 +257,10 @@ export default function BetForm({
               disabled={isPending || !amount || parseFloat(amount) <= 0}
               className="btn-primary flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm"
             >
-              {isPending ? (
+              {isWalletOpen ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {isPending ? "Confirming..." : "Sending..."}
+                  Waiting for wallet...
                 </>
               ) : (
                 `Place Bet - ${amount || "0"} ETH on ${labels[selectedOutcome]}`

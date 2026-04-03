@@ -32,6 +32,8 @@ export function useBet(marketAddress: string) {
   return {
     placeBet,
     hash,
+    isWalletOpen: isWritePending,
+    isConfirming,
     isPending: isWritePending || isConfirming,
     isSuccess,
     error: writeError || receiptError,
