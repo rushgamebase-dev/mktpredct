@@ -128,10 +128,16 @@ function startMarketEventWatchers(): void {
       abi: MarketABI,
       eventName,
       onLogs: (logs: any[]) => {
+        console.log(`[ChainWatcher] onLogs fired: ${eventName} | ${logs.length} logs received`)
         for (const log of logs) {
           const addr = (log.address as string).toLowerCase()
-          // Filter: only known markets
-          if (!knownMarkets.has(addr)) continue
+          const known = knownMarkets.has(addr)
+          if (!known) {
+            console.log(`[ChainWatcher] Filtered out: ${addr.slice(0, 10)}... (not in knownMarkets)`)
+            continue
+          }
+
+          console.log(`[ChainWatcher] Event: ${log.eventName} | market=${addr.slice(0, 10)}... | block=${log.blockNumber} | tx=${log.transactionHash?.slice(0, 10)}...`)
 
           bufferEvent(
             log.eventName,

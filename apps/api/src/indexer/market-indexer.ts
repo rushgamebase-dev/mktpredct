@@ -27,6 +27,7 @@ function computeOdds(totalPerOutcome: string[], totalPool: string): number[] {
 function emitGlobal(msg: WsServerMessage, marketAddress: string): void {
   const globalMsg: WsGlobalMessage = { ...msg, marketAddress }
   broadcast.emit('__global', globalMsg)
+  console.log(`[Broadcast] ${msg.type} → WS emitted | market=${marketAddress.slice(0, 10)}...`)
 }
 
 export async function processMarketEvent(
@@ -38,6 +39,8 @@ export async function processMarketEvent(
   blockNumber: number,
   logIndex: number,
 ): Promise<void> {
+  console.log(`[Event] ${eventName} | market=${market.address.slice(0, 10)}... | tx=${txHash.slice(0, 10)}... | block=${blockNumber}`)
+
   switch (eventName) {
     case 'BetPlaced': {
       const outcomeIdx = Number(args.outcomeIndex)
@@ -312,6 +315,11 @@ async function syncSingleMarket(
     : BigInt(market.createdBlock)
 
   if (fromBlock > currentBlock) return
+
+  const lag = currentBlock - fromBlock
+  if (lag > 100n) {
+    console.log(`[Indexer] WARNING: ${market.address.slice(0, 10)}... is ${lag} blocks behind`)
+  }
 
   while (fromBlock <= currentBlock) {
     const toBlock = fromBlock + BATCH_SIZE - 1n > currentBlock

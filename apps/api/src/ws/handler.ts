@@ -33,9 +33,11 @@ export function setupWebSocket(server: HttpServer): void {
     }
 
     broadcast.on(channel, listener)
+    console.log(`[WS] Client connected → ${channel} (listeners: ${broadcast.listenerCount(channel)})`)
 
     ws.on('close', () => {
       broadcast.off(channel, listener)
+      console.log(`[WS] Client disconnected ← ${channel} (listeners: ${broadcast.listenerCount(channel)})`)
     })
 
     ws.on('error', () => {
