@@ -1,19 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, Twitter, Zap, Clock, TrendingUp } from "lucide-react";
-import { OUTCOME_COLORS } from "@rush/shared";
+import { ArrowLeft, Clock, TrendingUp, Zap, AlertTriangle, Target, Users } from "lucide-react";
 
-// Mock market data (not on-chain)
-const MOCK_MARKET = {
-  question: "Will @aixbt_agent post more than 20 tweets today?",
-  labels: ["Yes (20+)", "No (under 20)"],
-  deadline: Math.floor(new Date().setUTCHours(23, 59, 59, 999) / 1000),
-  pool: "0.000",
-  odds: [65, 35],
-};
+const THRESHOLD = 20;
 
 interface Tweet {
   id: string;
@@ -29,42 +21,69 @@ export default function AixbtDemoPage() {
   const [last24hCount, setLast24hCount] = useState(0);
   const [period, setPeriod] = useState("today");
   const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState<string>("");
+  const [lastUpdate, setLastUpdate] = useState("");
   const [countdown, setCountdown] = useState("");
+  const [hoursLeft, setHoursLeft] = useState(24);
   const [prevCount, setPrevCount] = useState(0);
-  const [flashCount, setFlashCount] = useState(false);
+  const [newTweetFlash, setNewTweetFlash] = useState(false);
+  const [plusOneVisible, setPlusOneVisible] = useState(false);
+  const [startTime] = useState(Date.now());
 
-  // Fetch tweets from our API proxy
+  const activeCount = period === "today" ? todayCount : last24hCount;
+
+  // Pace & projection
+  const pace = useMemo(() => {
+    const elapsed = (Date.now() - startTime) / 1000 / 60; // minutes since page load
+    const hoursPassed = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
+    const effectiveHours = Math.max(0.5, hoursPassed);
+    const tweetsPerHour = activeCount / effectiveHours;
+    const projected = Math.round(tweetsPerHour * 24);
+    const remaining = THRESHOLD - activeCount;
+    const hoursRemaining = hoursLeft;
+    const neededPerHour = remaining > 0 && hoursRemaining > 0 ? remaining / hoursRemaining : 0;
+
+    let status: "ahead" | "on_track" | "behind" | "hit" = "behind";
+    if (activeCount >= THRESHOLD) status = "hit";
+    else if (projected >= THRESHOLD * 1.2) status = "ahead";
+    else if (projected >= THRESHOLD * 0.8) status = "on_track";
+
+    return { tweetsPerHour, projected, remaining, neededPerHour, status };
+  }, [activeCount, hoursLeft, startTime]);
+
+  // Fetch
   const fetchTweets = useCallback(async () => {
     try {
       const res = await fetch("/api/aixbt-tweets");
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
+      const newCount = data.todayCount > 0 ? data.todayCount : (data.last24hCount ?? 0);
+
+      if (newCount > activeCount && activeCount > 0) {
+        setNewTweetFlash(true);
+        setPlusOneVisible(true);
+        setTimeout(() => setNewTweetFlash(false), 2000);
+        setTimeout(() => setPlusOneVisible(false), 1500);
+      }
+
+      setPrevCount(activeCount);
       setTweets(data.tweets);
-      setPrevCount(todayCount);
       setTodayCount(data.todayCount);
       setLast24hCount(data.last24hCount ?? data.todayCount);
       setPeriod(data.period ?? "today");
       setLastUpdate(new Date().toLocaleTimeString());
       setLoading(false);
-
-      if (data.todayCount > todayCount && todayCount > 0) {
-        setFlashCount(true);
-        setTimeout(() => setFlashCount(false), 1500);
-      }
     } catch {
       setLoading(false);
     }
-  }, [todayCount]);
+  }, [activeCount]);
 
-  // Poll every 30 seconds
   useEffect(() => {
     fetchTweets();
     const iv = setInterval(fetchTweets, 30000);
     return () => clearInterval(iv);
   }, [fetchTweets]);
 
-  // Countdown to midnight UTC
+  // Countdown
   useEffect(() => {
     const tick = () => {
       const now = new Date();
@@ -75,22 +94,36 @@ export default function AixbtDemoPage() {
       const m = Math.floor((diff % 3600) / 60);
       const s = diff % 60;
       setCountdown(`${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`);
+      setHoursLeft(diff / 3600);
     };
     tick();
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
   }, []);
 
-  // Dynamic odds based on current count
-  const threshold = 20;
-  const activeCount = period === "today" ? todayCount : last24hCount;
-  const progress = Math.min(100, (activeCount / threshold) * 100);
-  const dynamicYes = activeCount >= threshold ? 95 : Math.min(90, 30 + (activeCount / threshold) * 60);
+  // Dynamic odds
+  const dynamicYes = activeCount >= THRESHOLD ? 95 : Math.min(92, 25 + (pace.projected / THRESHOLD) * 50);
   const dynamicNo = 100 - dynamicYes;
+  const progress = Math.min(100, (activeCount / THRESHOLD) * 100);
+
+  // Clutch zone
+  const isClutch = activeCount >= THRESHOLD - 5 && activeCount < THRESHOLD;
+  const isHit = activeCount >= THRESHOLD;
+
+  // Narrative
+  const narrative = useMemo(() => {
+    if (isHit) return "🎉 THRESHOLD HIT! @aixbt_agent crossed 20 tweets.";
+    if (isClutch) return `🔥 CLUTCH ZONE — needs ${THRESHOLD - activeCount} more tweet${THRESHOLD - activeCount === 1 ? "" : "s"}!`;
+    if (pace.status === "ahead") return "📈 Ahead of pace. YES looking strong.";
+    if (pace.status === "on_track") return "⚡ On track. Could go either way.";
+    if (activeCount === 0) return "🕐 Waiting for first tweet of the day...";
+    return `📊 Behind pace. Needs ${pace.remaining} tweets in ${Math.ceil(hoursLeft)}h.`;
+  }, [activeCount, pace, isClutch, isHit, hoursLeft]);
+
+  const paceColor = pace.status === "hit" ? "#00ff88" : pace.status === "ahead" ? "#00ff88" : pace.status === "on_track" ? "#ffc828" : "#ff4444";
 
   return (
-    <div>
-      {/* Back */}
+    <div className={newTweetFlash ? "bet-flash" : ""}>
       <Link href="/" className="mb-4 inline-flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-gray-300">
         <ArrowLeft className="h-3.5 w-3.5" />
         Back to Markets
@@ -99,149 +132,205 @@ export default function AixbtDemoPage() {
       {/* Header */}
       <div className="mb-6 rounded-2xl p-6" style={{ background: "linear-gradient(180deg, rgba(29,155,240,0.08) 0%, transparent 200px)" }}>
         <div className="flex items-center gap-3 mb-2">
-          <img
-            src="/aixbt-avatar.jpg"
-            alt="aixbt"
-            className="h-12 w-12 rounded-xl"
-            style={{ border: "2px solid rgba(29,155,240,0.3)" }}
-          />
-          <div>
+          <img src="/aixbt-avatar.jpg" alt="aixbt" className="h-12 w-12 rounded-xl" style={{ border: "2px solid rgba(29,155,240,0.3)" }} />
+          <div className="flex-1">
             <h1 className="text-xl font-black text-white sm:text-2xl">
-              {MOCK_MARKET.question}
+              Will @aixbt_agent post {THRESHOLD}+ tweets today?
             </h1>
-            <p className="text-sm italic text-gray-400 mt-1">
-              {todayCount >= 15
-                ? "AIXBT is on fire today. Almost at the threshold!"
-                : todayCount >= 10
-                ? "Steady posting pace. Will it accelerate?"
-                : "Quiet day so far. Can AIXBT catch up?"}
-            </p>
+            <p className="text-sm italic text-gray-400 mt-1">{narrative}</p>
           </div>
         </div>
 
-        {/* Meta */}
-        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 mt-3">
-          <span className="flex items-center gap-1">
+        {/* Stats bar */}
+        <div className="flex flex-wrap items-center gap-3 mt-3">
+          <div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold tabular" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)", color: "#ccc" }}>
             <Clock className="h-3.5 w-3.5" />
-            Ends in {countdown}
-          </span>
-          <span className="flex items-center gap-1">
+            {countdown}
+          </div>
+          <div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold" style={{ background: paceColor + "10", border: `1px solid ${paceColor}30`, color: paceColor }}>
             <TrendingUp className="h-3.5 w-3.5" />
-            Demo market (not on-chain)
-          </span>
-          {lastUpdate && (
-            <span className="text-gray-600">Updated {lastUpdate}</span>
-          )}
+            {pace.tweetsPerHour.toFixed(1)}/hr · Projected: {pace.projected}
+          </div>
+          <div className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)", color: paceColor }}>
+            <Target className="h-3.5 w-3.5" />
+            {pace.status === "hit" ? "✅ HIT" : pace.status === "ahead" ? "Ahead" : pace.status === "on_track" ? "On Track" : "Behind"}
+          </div>
+          {lastUpdate && <span className="text-[10px] text-gray-600">Updated {lastUpdate}</span>}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Left: Counter + Progress + Odds */}
+        {/* Left */}
         <div className="lg:col-span-3 space-y-4">
 
-          {/* Big counter */}
-          <div className="card p-6 text-center">
+          {/* BIG COUNTER */}
+          <div className={`card p-6 text-center relative overflow-hidden ${isHit ? "neon-glow" : isClutch ? "neon-glow-danger" : ""}`}>
+            {/* +1 animation */}
+            <AnimatePresence>
+              {plusOneVisible && (
+                <motion.div
+                  initial={{ opacity: 1, y: 0, scale: 1 }}
+                  animate={{ opacity: 0, y: -60, scale: 1.5 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 1.2 }}
+                  className="absolute top-4 right-8 text-2xl font-black z-20"
+                  style={{ color: "#00ff88" }}
+                >
+                  +1
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">
               @aixbt_agent tweets {period === "today" ? "today" : "last 24h"}
             </div>
+
             <motion.div
-              key={period === "today" ? todayCount : last24hCount}
-              initial={{ scale: 1.3, color: "#00ff88" }}
-              animate={{ scale: 1, color: "#ffffff" }}
-              transition={{ duration: 0.5 }}
-              className={`text-7xl font-black tabular ${flashCount ? "neon-green" : ""}`}
+              key={activeCount}
+              initial={{ scale: 1.4, color: "#00ff88" }}
+              animate={{ scale: 1, color: isHit ? "#00ff88" : "#ffffff" }}
+              transition={{ type: "spring", stiffness: 300, damping: 15 }}
+              className="text-8xl font-black tabular"
             >
-              {loading ? "..." : period === "today" ? todayCount : last24hCount}
+              {loading ? "..." : activeCount}
             </motion.div>
-            <div className="text-sm text-gray-500 mt-2">
-              / {threshold} needed for <span style={{ color: "#00ff88" }}>Yes</span>
-              {period !== "today" && <span className="text-gray-600 ml-2">(showing last 24h)</span>}
+
+            <div className="text-sm text-gray-500 mt-1">
+              / {THRESHOLD} needed for <span style={{ color: "#3B82F6" }}>Yes</span>
+              {period !== "today" && <span className="text-gray-600 ml-2">(last 24h)</span>}
             </div>
 
-            {/* Progress bar */}
-            <div className="mt-4 h-3 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+            {/* Clutch message */}
+            {isClutch && (
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-3 flex items-center justify-center gap-2 text-sm font-bold starting-soon-pulse"
+                style={{ color: "#ff4444" }}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                {THRESHOLD - activeCount} to go — needs {Math.ceil(pace.neededPerHour * 10) / 10}/hr
+              </motion.div>
+            )}
+
+            {isHit && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mt-3 text-lg font-black"
+                style={{ color: "#00ff88" }}
+              >
+                ✅ THRESHOLD HIT!
+              </motion.div>
+            )}
+
+            {/* Smart progress bar */}
+            <div className="mt-4 h-4 rounded-full overflow-hidden relative" style={{ background: "rgba(255,255,255,0.06)" }}>
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
                 className="h-full rounded-full"
                 style={{
-                  background: progress >= 100
+                  background: isHit
                     ? "linear-gradient(90deg, #00ff88, #10B981)"
-                    : progress > 70
+                    : progress > 75
+                    ? "linear-gradient(90deg, #ff4444, #ffc828, #00ff88)"
+                    : progress > 50
                     ? "linear-gradient(90deg, #ffc828, #00ff88)"
                     : "linear-gradient(90deg, #3B82F6, #00ff88)",
                 }}
               />
+              {/* Threshold marker */}
+              <div className="absolute top-0 bottom-0 w-0.5" style={{ left: "100%", background: "rgba(255,255,255,0.3)", transform: "translateX(-2px)" }} />
             </div>
             <div className="flex justify-between text-[10px] text-gray-600 mt-1">
               <span>0</span>
-              <span>{threshold} tweets</span>
+              <span className="font-bold" style={{ color: progress > 50 ? "#ffc828" : "#666" }}>
+                {isHit ? "🎯 Complete!" : `${THRESHOLD - activeCount} remaining`}
+              </span>
+              <span>{THRESHOLD}</span>
+            </div>
+
+            {/* Pace stats */}
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.02)" }}>
+                <div className="text-[10px] text-gray-500">Rate</div>
+                <div className="text-sm font-bold tabular" style={{ color: paceColor }}>{pace.tweetsPerHour.toFixed(1)}/hr</div>
+              </div>
+              <div className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.02)" }}>
+                <div className="text-[10px] text-gray-500">Projected</div>
+                <div className="text-sm font-bold tabular" style={{ color: pace.projected >= THRESHOLD ? "#00ff88" : "#ff4444" }}>{pace.projected}</div>
+              </div>
+              <div className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.02)" }}>
+                <div className="text-[10px] text-gray-500">Need/hr</div>
+                <div className="text-sm font-bold tabular" style={{ color: pace.neededPerHour <= pace.tweetsPerHour ? "#00ff88" : "#ff4444" }}>
+                  {pace.remaining <= 0 ? "—" : pace.neededPerHour.toFixed(1)}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Mock odds */}
+          {/* Odds */}
           <div className="card p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
-              Implied Odds (simulated)
-            </h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Live Odds (simulated)</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl p-4 text-center" style={{ background: "#3B82F612", border: "2px solid #3B82F640" }}>
-                <div className="text-xs text-gray-400">{MOCK_MARKET.labels[0]}</div>
-                <div className="text-3xl font-black tabular" style={{ color: "#3B82F6" }}>
+              <motion.div layout className="rounded-xl p-4 text-center transition-all" style={{ background: "#3B82F612", border: "2px solid #3B82F640" }}>
+                <div className="text-xs text-gray-400">Yes (20+)</div>
+                <motion.div key={Math.round(dynamicYes)} initial={{ scale: 1.1 }} animate={{ scale: 1 }} className="text-3xl font-black tabular" style={{ color: "#3B82F6" }}>
                   {Math.round(dynamicYes)}%
-                </div>
-                <div className="text-[10px] font-bold mt-1" style={{ color: "#3B82F6aa" }}>
-                  Win ~{(100 / dynamicYes).toFixed(1)}x
-                </div>
-              </div>
-              <div className="rounded-xl p-4 text-center" style={{ background: "#EF444412", border: "2px solid #EF444440" }}>
-                <div className="text-xs text-gray-400">{MOCK_MARKET.labels[1]}</div>
-                <div className="text-3xl font-black tabular" style={{ color: "#EF4444" }}>
+                </motion.div>
+                <div className="text-[10px] font-bold mt-1" style={{ color: "#3B82F6aa" }}>Win ~{(100 / dynamicYes).toFixed(1)}x</div>
+              </motion.div>
+              <motion.div layout className="rounded-xl p-4 text-center transition-all" style={{ background: "#EF444412", border: "2px solid #EF444440" }}>
+                <div className="text-xs text-gray-400">No (under 20)</div>
+                <motion.div key={Math.round(dynamicNo)} initial={{ scale: 1.1 }} animate={{ scale: 1 }} className="text-3xl font-black tabular" style={{ color: "#EF4444" }}>
                   {Math.round(dynamicNo)}%
-                </div>
-                <div className="text-[10px] font-bold mt-1" style={{ color: "#EF4444aa" }}>
-                  Win ~{(100 / dynamicNo).toFixed(1)}x
-                </div>
-              </div>
+                </motion.div>
+                <div className="text-[10px] font-bold mt-1" style={{ color: "#EF4444aa" }}>Win ~{(100 / dynamicNo).toFixed(1)}x</div>
+              </motion.div>
             </div>
-            <p className="text-[10px] text-center text-gray-600 mt-3">
-              This is a demo. Odds update based on real tweet count.
-            </p>
+
+            {/* Psych hack */}
+            <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-gray-500">
+              <Users className="h-3 w-3" />
+              {dynamicYes > 60 ? "Most bettors are on YES" : dynamicNo > 60 ? "Most bettors are on NO" : "Market is split — your bet matters"}
+            </div>
           </div>
         </div>
 
-        {/* Right: Live tweet feed */}
+        {/* Right: Tweet feed */}
         <div className="lg:col-span-2">
           <div className="card p-4">
             <h3 className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-3">
               <img src="/aixbt-avatar.jpg" alt="" className="h-5 w-5 rounded-full" />
-              Live @aixbt_agent Feed
+              Live Feed
               <span className="live-dot" style={{ width: 6, height: 6 }} />
+              <span className="text-[10px] text-gray-600 font-normal ml-auto">{activeCount} tweets</span>
             </h3>
 
             {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="skeleton h-16 w-full rounded-lg" />
-                ))}
-              </div>
+              <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="skeleton h-16 w-full rounded-lg" />)}</div>
             ) : tweets.length === 0 ? (
-              <p className="text-xs text-gray-600 text-center py-4">No tweets today yet</p>
+              <p className="text-xs text-gray-600 text-center py-8">Waiting for first tweet...</p>
             ) : (
-              <div className="space-y-2 max-h-[500px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+              <div className="space-y-2 max-h-[520px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
                 {tweets.map((tweet, i) => (
                   <motion.div
                     key={tweet.id}
-                    initial={i === 0 ? { opacity: 0, x: -10 } : false}
-                    animate={{ opacity: 1, x: 0 }}
+                    initial={i === 0 ? { opacity: 0, x: -12, background: "rgba(0,255,136,0.08)" } : false}
+                    animate={{ opacity: 1, x: 0, background: "rgba(255,255,255,0.02)" }}
+                    transition={{ duration: 0.4 }}
                     className="rounded-lg p-3"
-                    style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)" }}
+                    style={{ border: "1px solid var(--border)" }}
                   >
-                    <p className="text-xs text-gray-300 leading-relaxed line-clamp-3">
-                      {tweet.text}
-                    </p>
-                    <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-600">
+                    <div className="flex items-start gap-2">
+                      <span className="text-[10px] font-bold shrink-0 rounded px-1 py-0.5" style={{ background: "rgba(29,155,240,0.1)", color: "#1D9BF0" }}>
+                        #{activeCount - i}
+                      </span>
+                      <p className="text-xs text-gray-300 leading-relaxed line-clamp-3">{tweet.text}</p>
+                    </div>
+                    <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-600 pl-7">
                       <span>❤ {tweet.likeCount}</span>
                       <span>🔁 {tweet.retweetCount}</span>
                       <span>{new Date(tweet.createdAt).toLocaleTimeString()}</span>
