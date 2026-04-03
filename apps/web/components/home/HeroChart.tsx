@@ -108,10 +108,6 @@ export default function HeroChart({
   const pulseRef = useRef<number | null>(null);
   const [pulseProgress, setPulseProgress] = useState(0);
 
-  // Simulated real-time state
-  const livePointsRef = useRef<Record<string, { time: number; value: number }[]>>({});
-  const [liveTick, setLiveTick] = useState(0);
-
   // Mouse
   const mouseRef = useRef<{ x: number; y: number } | null>(null);
   const [mouseX, setMouseX] = useState<number | null>(null);
@@ -131,34 +127,23 @@ export default function HeroChart({
       const m = markets.find((mk) => mk.address === selectedMarket);
       if (!m) return [];
       const chartPts = chartDataMap[selectedMarket] ?? [];
-      const livePts = livePointsRef.current[selectedMarket] ?? [];
-      return m.labels.map((label, idx) => {
-        const basePts = chartPts.map((p) => ({ time: p.timestamp, value: p.odds[idx] ?? 0 }));
-        const live = livePts.map((lp) => ({
-          time: lp.time,
-          value: clamp(lp.value + (idx === 0 ? 0 : (50 - lp.value) * 0.5), 0, 100),
-        }));
-        return {
-          key: `${selectedMarket}-${idx}`,
-          label,
-          color: OUTCOME_COLORS[idx % OUTCOME_COLORS.length],
-          points: [...basePts, ...live],
-        };
-      });
+      return m.labels.map((label, idx) => ({
+        key: `${selectedMarket}-${idx}`,
+        label,
+        color: OUTCOME_COLORS[idx % OUTCOME_COLORS.length],
+        points: chartPts.map((p) => ({ time: p.timestamp, value: p.odds[idx] ?? 0 })),
+      }));
     }
     return markets.map((m, mIdx) => {
       const chartPts = chartDataMap[m.address] ?? [];
-      const livePts = livePointsRef.current[m.address] ?? [];
-      const basePts = chartPts.map((p) => ({ time: p.timestamp, value: p.odds[0] ?? 0 }));
       return {
         key: m.address,
         label: shortName(m.question),
         color: OUTCOME_COLORS[mIdx % OUTCOME_COLORS.length],
-        points: [...basePts, ...livePts],
+        points: chartPts.map((p) => ({ time: p.timestamp, value: p.odds[0] ?? 0 })),
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markets, chartDataMap, selectedMarket, liveTick]);
+  }, [markets, chartDataMap, selectedMarket]);
 
   // ---------------------------------------------------------------------------
   // Coordinate helpers
@@ -232,34 +217,7 @@ export default function HeroChart({
     return () => { if (pulseRef.current) cancelAnimationFrame(pulseRef.current); };
   }, [mounted]);
 
-  // ---------------------------------------------------------------------------
-  // Simulated real-time
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    const iv = setInterval(() => {
-      const targets = selectedMarket ? [selectedMarket] : markets.map((m) => m.address);
-      targets.forEach((addr) => {
-        const existing = livePointsRef.current[addr] ?? [];
-        const chartPts = chartDataMap[addr] ?? [];
-        const lastVal = existing.length > 0
-          ? existing[existing.length - 1].value
-          : chartPts.length > 0 ? chartPts[chartPts.length - 1].odds[0] ?? 50 : 50;
-        const lastTime = existing.length > 0
-          ? existing[existing.length - 1].time
-          : chartPts.length > 0 ? chartPts[chartPts.length - 1].timestamp : Math.floor(Date.now() / 1000);
-        const realTarget = chartPts.length > 0 ? (chartPts[chartPts.length - 1].odds[0] ?? 50) : 50;
-        const reversion = (realTarget - lastVal) * 0.08;
-        const noise = (Math.random() - 0.5) * 3;
-        const newVal = clamp(lastVal + reversion + noise, 2, 98);
-        livePointsRef.current = {
-          ...livePointsRef.current,
-          [addr]: [...existing, { time: lastTime + 72, value: newVal }].slice(-30),
-        };
-      });
-      setLiveTick((t) => t + 1);
-    }, 1200);
-    return () => clearInterval(iv);
-  }, [markets, chartDataMap, selectedMarket]);
+  // NO simulated real-time — chart updates only via real data from API/WebSocket
 
   // ---------------------------------------------------------------------------
   // Draw canvas — Polymarket style

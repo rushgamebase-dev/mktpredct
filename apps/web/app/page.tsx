@@ -79,76 +79,7 @@ export default function HomePage() {
   );
 
   // ---------------------------------------------------------------------------
-  // Generate rich chart history: 60+ points with smooth random walk
-  // Real data points serve as "anchors" — synthetic fills gaps between them
-  // ---------------------------------------------------------------------------
-  function generateRichHistory(
-    currentOdds: number[],
-    realPoints: OddsPoint[],
-    outcomeCount: number,
-  ): OddsPoint[] {
-    const now = Math.floor(Date.now() / 1000);
-    const TOTAL_POINTS = 72; // ~24h at 20min intervals
-    const INTERVAL = 1200; // 20 minutes in seconds
-    const points: OddsPoint[] = [];
-
-    // Build anchor map from real data (timestamp → odds)
-    const anchors = new Map<number, number[]>();
-    for (const rp of realPoints) {
-      anchors.set(rp.timestamp, rp.odds);
-    }
-
-    // Start from a slightly different value to create visual interest
-    const startVal = Math.max(5, Math.min(95, (currentOdds[0] ?? 50) + (Math.random() - 0.5) * 20));
-    let val = startVal;
-
-    for (let i = 0; i < TOTAL_POINTS; i++) {
-      const ts = now - (TOTAL_POINTS - i) * INTERVAL;
-
-      // Check if there's a real anchor near this timestamp (within 1 interval)
-      let anchorVal: number | null = null;
-      for (const [aTs, aOdds] of anchors) {
-        if (Math.abs(aTs - ts) < INTERVAL) {
-          anchorVal = aOdds[0] ?? null;
-          break;
-        }
-      }
-
-      if (anchorVal !== null) {
-        // Snap to real data
-        val = anchorVal;
-      } else {
-        // Random walk with mean reversion toward current odds
-        const target = currentOdds[0] ?? 50;
-        const reversion = (target - val) * 0.04; // gentle pull toward current value
-        const noise = (Math.random() - 0.5) * 3; // ±1.5%
-        val = Math.max(2, Math.min(98, val + reversion + noise));
-      }
-
-      const primaryOdds = Math.round(val * 10) / 10;
-      const remaining = 100 - primaryOdds;
-      const others = outcomeCount > 1
-        ? Array.from({ length: outcomeCount - 1 }, (_, j) => {
-            // Distribute remaining with slight variation
-            const base = remaining / (outcomeCount - 1);
-            const jitter = (Math.random() - 0.5) * 2;
-            return Math.max(0, Math.round((base + jitter) * 10) / 10);
-          })
-        : [];
-
-      points.push({
-        timestamp: ts,
-        odds: [primaryOdds, ...others],
-      });
-    }
-
-    // Pin final point to current odds
-    points.push({ timestamp: now, odds: [...currentOdds] });
-    return points;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Fetch chart data + always enrich with synthetic history
+  // Fetch chart data — REAL data only, no synthetic
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (heroMarkets.length === 0) return;
@@ -160,22 +91,12 @@ export default function HomePage() {
       const results = await Promise.allSettled(
         heroMarkets.map(async (m) => {
           if (chartDataMap[m.address]?.length) return null;
-          let realPoints: OddsPoint[] = [];
           try {
-            const resp = await apiGet<ChartResponse>(
-              `/api/markets/${m.address}/chart`,
-            );
-            realPoints = resp.points;
+            const resp = await apiGet<ChartResponse>(`/api/markets/${m.address}/chart`);
+            return { address: m.address, points: resp.points };
           } catch {
-            // API failed — no real points, fully synthetic
+            return null;
           }
-          // Always generate rich history, merging with real anchors
-          const richPoints = generateRichHistory(
-            m.odds.map((o) => o),
-            realPoints,
-            m.outcomeCount,
-          );
-          return { address: m.address, points: richPoints };
         }),
       );
 

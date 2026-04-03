@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { motion } from "framer-motion";
-import type { MarketDetail } from "@rush/shared";
-import { formatAddress } from "@/lib/format";
-import { MessageCircle } from "lucide-react";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAccount } from "wagmi";
+import type { MarketDetail, CommentsResponse } from "@rush/shared";
+import { apiGet } from "@/lib/api";
+import { formatAddress, timeAgo } from "@/lib/format";
+import { MessageCircle, Send } from "lucide-react";
 
 interface MarketCommentsProps {
   market: MarketDetail;
@@ -16,237 +15,83 @@ interface MarketCommentsProps {
   colors: string[];
 }
 
-interface FakeComment {
-  address: string;
-  initials: string;
-  avatarColor: string;
-  text: string;
-  minutesAgo: number;
-}
+export default function MarketComments({ market }: MarketCommentsProps) {
+  const { address, isConnected } = useAccount();
+  const queryClient = useQueryClient();
+  const [newComment, setNewComment] = useState("");
 
-// ---------------------------------------------------------------------------
-// Deterministic hash from a string — simple djb2
-// ---------------------------------------------------------------------------
+  const { data, isLoading } = useQuery({
+    queryKey: ["comments", market.address],
+    queryFn: () => apiGet<CommentsResponse>(`/api/markets/${market.address}/comments`),
+    refetchInterval: 30000,
+  });
 
-function hashStr(str: string): number {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
-
-// ---------------------------------------------------------------------------
-// Generate a fake Ethereum address from market address + index
-// ---------------------------------------------------------------------------
-
-function fakeAddress(marketAddr: string, index: number): string {
-  const h = hashStr(marketAddr + String(index));
-  // Build a pseudo-hex string deterministically
-  const hex = h.toString(16).padStart(8, "0");
-  const hex2 = hashStr(hex + String(index * 7)).toString(16).padStart(8, "0");
-  const hex3 = hashStr(hex2 + "salt").toString(16).padStart(8, "0");
-  const hex4 = hashStr(hex3 + "extra").toString(16).padStart(8, "0");
-  const hex5 = hashStr(hex4 + "more").toString(16).padStart(8, "0");
-  return `0x${(hex + hex2 + hex3 + hex4 + hex5).slice(0, 40)}`;
-}
-
-// ---------------------------------------------------------------------------
-// Avatar colors palette
-// ---------------------------------------------------------------------------
-
-const AVATAR_COLORS = [
-  "#00ff88",
-  "#ff4444",
-  "#ffc828",
-  "#5078ff",
-  "#ff6b9d",
-  "#a78bfa",
-  "#38bdf8",
-  "#fb923c",
-];
-
-// ---------------------------------------------------------------------------
-// Generate comment text based on market data
-// ---------------------------------------------------------------------------
-
-function generateCommentText(
-  market: MarketDetail,
-  labels: string[],
-  index: number,
-): string {
-  const primaryOdds = market.odds[0] ?? 50;
-  const primaryLabel = labels[0] ?? "Yes";
-  const underdogIdx = market.odds.indexOf(Math.min(...market.odds));
-  const underdogLabel = labels[underdogIdx] ?? "No";
-
-  const poolBig = BigInt(market.totalPool);
-  const oneEth = BigInt("1000000000000000000");
-  const isHighVolume = poolBig > oneEth;
-
-  const now = Math.floor(Date.now() / 1000);
-  const remaining = market.deadline - now;
-  const isSoon = remaining > 0 && remaining < 3600; // less than 1 hour
-
-  // Use index + hash to deterministically pick a comment variant
-  const h = hashStr(market.address + String(index));
-  const variant = h % 5;
-
-  if (isSoon && variant < 2) {
-    return "Running out of time. Last chance to get in.";
-  }
-
-  if (isHighVolume && variant === 2) {
-    return "Volume picking up fast. Smart money is moving.";
-  }
-
-  if (primaryOdds > 70) {
-    const templates = [
-      `Strong conviction on ${primaryLabel}. This feels like free money.`,
-      `${primaryLabel} at ${Math.round(primaryOdds)}% seems locked in. Not much edge left.`,
-    ];
-    return templates[h % templates.length];
-  }
-
-  if (primaryOdds > 55) {
-    const templates = [
-      `${primaryLabel} is leading but anything can happen. I'm in.`,
-      `Leaning ${primaryLabel} here. The odds still have room to move.`,
-    ];
-    return templates[h % templates.length];
-  }
-
-  if (primaryOdds >= 45) {
-    const templates = [
-      `Market is split. Going contrarian on ${underdogLabel}.`,
-      `50/50 vibes. This is where the real alpha is.`,
-    ];
-    return templates[h % templates.length];
-  }
-
-  // Primary is the underdog
-  return `${primaryLabel} is trailing hard. Contrarian play or dead money?`;
-}
-
-// ---------------------------------------------------------------------------
-// Build fake comments
-// ---------------------------------------------------------------------------
-
-function buildComments(
-  market: MarketDetail,
-  labels: string[],
-): FakeComment[] {
-  // Deterministic count: 3 or 4 based on market address hash
-  const h = hashStr(market.address);
-  const count = 3 + (h % 2); // 3 or 4
-
-  const comments: FakeComment[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const addr = fakeAddress(market.address, i);
-    const colorIdx = hashStr(addr) % AVATAR_COLORS.length;
-    const initial1 = addr.slice(2, 3).toUpperCase();
-    const initial2 = addr.slice(3, 4).toUpperCase();
-
-    comments.push({
-      address: addr,
-      initials: initial1 + initial2,
-      avatarColor: AVATAR_COLORS[colorIdx],
-      text: generateCommentText(market, labels, i),
-      minutesAgo: 2 + hashStr(addr + "time") % 55, // 2-56 minutes ago
-    });
-  }
-
-  return comments;
-}
-
-// ---------------------------------------------------------------------------
-// Animation
-// ---------------------------------------------------------------------------
-
-const commentVariant = {
-  hidden: { opacity: 0, y: 12 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.1,
-      duration: 0.35,
-      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+  const postComment = useMutation({
+    mutationFn: async (content: string) => {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/markets/${market.address}/comments`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, userAddress: address?.toLowerCase() }),
+        },
+      );
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
     },
-  }),
-};
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comments", market.address] });
+      setNewComment("");
+    },
+  });
 
-// ---------------------------------------------------------------------------
-// MarketComments
-// ---------------------------------------------------------------------------
-
-export default function MarketComments({
-  market,
-  labels,
-  colors,
-}: MarketCommentsProps) {
-  const comments = useMemo(() => buildComments(market, labels), [market, labels]);
+  const comments = data?.comments ?? [];
 
   return (
     <div className="card p-4">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
-        <MessageCircle className="h-4 w-4" style={{ color: "#00ff88" }} />
-        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-          Community
-        </h3>
-        <span className="text-[10px] text-gray-600 ml-auto">
-          {comments.length} comments
-        </span>
-      </div>
+      <h3 className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-3">
+        <MessageCircle className="h-4 w-4" />
+        Community
+        {comments.length > 0 && <span className="text-[10px] text-gray-600 font-normal">{comments.length}</span>}
+      </h3>
 
-      {/* Comments list */}
-      <div className="space-y-3">
-        {comments.map((comment, i) => (
-          <motion.div
-            key={comment.address}
-            variants={commentVariant}
-            initial="hidden"
-            animate="visible"
-            custom={i}
-            className="flex gap-2.5"
-          >
-            {/* Avatar circle */}
-            <div
-              className="shrink-0 flex items-center justify-center rounded-full"
-              style={{
-                width: 28,
-                height: 28,
-                background: comment.avatarColor + "20",
-                border: `1px solid ${comment.avatarColor}40`,
-              }}
-            >
-              <span
-                className="text-[10px] font-bold"
-                style={{ color: comment.avatarColor }}
-              >
-                {comment.initials}
-              </span>
-            </div>
+      {isConnected ? (
+        <form onSubmit={(e) => { e.preventDefault(); if (newComment.trim()) postComment.mutate(newComment.trim()); }} className="flex gap-2 mb-3">
+          <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Share your take..." maxLength={500} className="input-base flex-1 rounded-lg px-3 py-1.5 text-xs" />
+          <button type="submit" disabled={postComment.isPending || !newComment.trim()} className="btn-primary rounded-lg px-3 py-1.5 text-xs font-bold disabled:opacity-30">
+            <Send className="h-3 w-3" />
+          </button>
+        </form>
+      ) : (
+        <p className="text-[10px] text-gray-600 mb-3">Connect wallet to comment</p>
+      )}
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[11px] font-bold text-gray-400">
-                  {formatAddress(comment.address)}
-                </span>
-                <span className="text-[10px] text-gray-600">
-                  {comment.minutesAgo}m ago
-                </span>
-              </div>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                {comment.text}
-              </p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="space-y-2"><div className="skeleton h-10 w-full rounded-lg" /><div className="skeleton h-10 w-full rounded-lg" /></div>
+      ) : comments.length === 0 ? (
+        <p className="text-xs text-gray-600 text-center py-4">No comments yet. Be the first!</p>
+      ) : (
+        <div className="space-y-2 max-h-[200px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+          <AnimatePresence initial={false}>
+            {comments.map((c) => (
+              <motion.div key={c.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-2 py-1.5">
+                <div className="h-5 w-5 rounded-full shrink-0 flex items-center justify-center text-[8px] font-bold"
+                  style={{ background: `hsl(${(c.userAddress.charCodeAt(2) ?? 0) * 15}, 60%, 40%)`, color: "#fff" }}>
+                  {c.userAddress.slice(2, 4).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono text-gray-500">{formatAddress(c.userAddress)}</span>
+                    <span className="text-[9px] text-gray-700">{timeAgo(c.createdAt)}</span>
+                  </div>
+                  <p className="text-xs text-gray-300 leading-relaxed">{c.content}</p>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
