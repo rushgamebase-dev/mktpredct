@@ -1,0 +1,6 @@
+{
+  "installCommand": "cd ../.. && npm install -g pnpm@10.33.0 && pnpm install --no-frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm --filter @rush/web build",
+  "outputDirectory": ".next",
+  "framework": "nextjs"
+}
