@@ -80,11 +80,18 @@ function buildHourly(tweets: TweetData[]): number[] {
   return hourly
 }
 
-async function pollTwitterSource(marketAddress: string, target: string): Promise<void> {
+async function pollTwitterSource(marketAddress: string, target: string, keyword?: string): Promise<void> {
   const tweets = await fetchTweets(target)
   if (tweets.length === 0) return
 
-  const todayTweets = filterToday(tweets)
+  let todayTweets = filterToday(tweets)
+
+  // Keyword filter: only count tweets containing the keyword
+  if (keyword) {
+    const kw = keyword.toLowerCase()
+    todayTweets = todayTweets.filter((t) => t.text.toLowerCase().includes(kw))
+  }
+
   const count = todayTweets.length
   const hourly = buildHourly(todayTweets)
 
@@ -187,8 +194,9 @@ export async function startTwitterPollers(): Promise<void> {
   for (const m of twitterMarkets) {
     const config = m.sourceConfig as Record<string, unknown>
     const target = config.target as string
+    const keyword = config.keyword as string | undefined
     try {
-      await pollTwitterSource(m.address, target)
+      await pollTwitterSource(m.address, target, keyword)
     } catch (e) {
       console.error(`[Twitter] Initial poll error for ${target}:`, e)
     }
@@ -199,8 +207,9 @@ export async function startTwitterPollers(): Promise<void> {
     for (const m of twitterMarkets) {
       const config = m.sourceConfig as Record<string, unknown>
       const target = config.target as string
+      const keyword = config.keyword as string | undefined
       try {
-        await pollTwitterSource(m.address, target)
+        await pollTwitterSource(m.address, target, keyword)
       } catch (e) {
         console.error(`[Twitter] Poll error for ${target}:`, e)
       }
