@@ -33,6 +33,16 @@ export type WsServerMessage =
 			}
 	  }
 	| {
+			type: 'counter_update'
+			data: {
+				currentCount: number
+				ratePerHour: number
+				projected: number
+				lastEventAt: number
+				delta: number
+			}
+	  }
+	| {
 			type: 'error'
 			data: { message: string }
 	  }

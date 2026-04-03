@@ -59,32 +59,32 @@ export default function AixbtDemoPage() {
   // Fetch
   const fetchTweets = useCallback(async () => {
     try {
-      const res = await fetch("/api/aixbt-tweets");
+      const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+      const MARKET_ADDR = "0x352a950cb6e7249a81cdf7dead3745e2bdd826d0";
+      const res = await fetch(`${API}/api/markets/${MARKET_ADDR}/counter`);
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
-      const newCount = data.todayCount > 0 ? data.todayCount : (data.last24hCount ?? 0);
+      const newCount = data.currentCount ?? 0;
 
       if (newCount > activeCount && activeCount > 0) {
         setNewTweetFlash(true);
         setPlusOneVisible(true);
         setTimeout(() => setNewTweetFlash(false), 2000);
         setTimeout(() => setPlusOneVisible(false), 1500);
-        // Auto-scroll feed to top
-        setTimeout(() => {
-          feedRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-        }, 300);
+        setTimeout(() => { feedRef.current?.scrollTo({ top: 0, behavior: "smooth" }); }, 300);
       }
 
       setPrevCount(activeCount);
-      setTweets(data.tweets);
-      setTodayCount(data.todayCount);
-      setLast24hCount(data.last24hCount ?? data.todayCount);
-      setPeriod(data.period ?? "today");
-      setHistory(data.history ?? []);
-      setStreak(data.streak ?? 0);
-      setHourly(data.hourly ?? new Array(24).fill(0));
-      setRecentCount(data.recentCount ?? 0);
-      setLastTweetTime(data.lastTweetTime ?? null);
+      setTodayCount(newCount);
+      setLast24hCount(newCount);
+      setPeriod("today");
+      // Timeline from counter endpoint
+      const tl = (data.timeline ?? []) as { hour: number; count: number }[];
+      setHourly(tl.length === 24 ? tl.map((t: { count: number }) => t.count) : new Array(24).fill(0));
+      setRecentCount(0); // counter endpoint doesn't have this yet
+      setLastTweetTime(data.lastEventAt > 0 ? new Date(data.lastEventAt * 1000).toISOString() : null);
+      // Clear tweets array (counter endpoint doesn't return individual tweets)
+      setTweets([]);
       setLastUpdate(new Date().toLocaleTimeString());
       setLoading(false);
     } catch {

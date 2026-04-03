@@ -5,6 +5,7 @@ import { env } from './env.js'
 import { errorHandler } from './middleware/error.js'
 import { setupWebSocket } from './ws/handler.js'
 import { startIndexer } from './indexer/index.js'
+import { startTwitterPollers } from './services/data-sources/twitter.js'
 import marketsRoutes from './routes/markets.js'
 import activityRoutes from './routes/activity.js'
 import positionsRoutes from './routes/positions.js'
@@ -50,5 +51,6 @@ const server = serve(
 // Attach WebSocket upgrade handler to the underlying Node HTTP server
 setupWebSocket(server as any)
 
-// Start the indexer loop
+// Start the indexer loop + data source pollers
 startIndexer()
+startTwitterPollers()
