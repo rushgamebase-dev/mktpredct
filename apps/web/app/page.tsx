@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMarkets } from "@/hooks/useMarkets";
@@ -53,6 +54,7 @@ const sectionVariants = {
 // ---------------------------------------------------------------------------
 
 export default function HomePage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   // Market selection / hover
@@ -281,7 +283,7 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Quick-bet buttons (single-market mode) */}
+          {/* Quick-bet buttons (single-market mode) → navigate to market */}
           {selectedMarketData && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -294,15 +296,17 @@ export default function HomePage() {
                 return (
                   <button
                     key={label}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs font-bold transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    onClick={() => router.push(`/markets/${selectedMarket}?outcome=${idx}`)}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-bold transition-all hover:scale-[1.03] active:scale-[0.97]"
                     style={{
-                      background: color + "0F",
-                      border: `1px solid ${color}25`,
+                      background: color + "18",
+                      border: `1px solid ${color}40`,
                       color: color,
+                      boxShadow: `0 0 12px ${color}15`,
                     }}
                   >
                     <span
-                      className="w-2 h-2 rounded-full"
+                      className="w-2.5 h-2.5 rounded-full"
                       style={{ background: color }}
                     />
                     {label} {odds}%
