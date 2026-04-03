@@ -4,6 +4,10 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, Clock, TrendingUp, Zap, AlertTriangle, Target, Users } from "lucide-react";
+import MarketComments from "@/components/market/MarketComments";
+import RelatedMarkets from "@/components/market/RelatedMarkets";
+import { useMarket } from "@/hooks/useMarket";
+import { useMarkets } from "@/hooks/useMarkets";
 
 const THRESHOLD = 20;
 
@@ -36,6 +40,12 @@ export default function AixbtDemoPage() {
   const [lastTweetTime, setLastTweetTime] = useState<string | null>(null);
 
   const activeCount = period === "today" ? todayCount : last24hCount;
+
+  // Real market data for comments + related
+  const MARKET_ADDR = "0x352a950cb6e7249a81cdf7dead3745e2bdd826d0";
+  const { data: marketData } = useMarket(MARKET_ADDR);
+  const { data: allMarketsData } = useMarkets({ page: 1, pageSize: 20, status: "all" });
+  const allMarkets = allMarketsData?.markets ?? [];
 
   // Pace & projection
   const pace = useMemo(() => {
@@ -477,6 +487,24 @@ export default function AixbtDemoPage() {
           </div>
         </div>
       </div>
+
+      {/* Comments */}
+      {marketData && (
+        <div className="mt-6">
+          <MarketComments
+            market={marketData}
+            labels={marketData.labels}
+            colors={["#3B82F6", "#EF4444"]}
+          />
+        </div>
+      )}
+
+      {/* Related Markets */}
+      {allMarkets.length > 0 && (
+        <div className="mt-6">
+          <RelatedMarkets currentAddress={MARKET_ADDR} markets={allMarkets} />
+        </div>
+      )}
     </div>
   );
 }
