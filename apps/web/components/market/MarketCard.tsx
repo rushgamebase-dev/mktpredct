@@ -14,7 +14,26 @@ import { formatEth } from "@/lib/format";
 function extractEmoji(text: string): string {
   const emojiRegex = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/u;
   const match = text.match(emojiRegex);
-  return match ? match[0] : "\u{1F4CA}";
+  if (match) return match[0];
+
+  const t = text.toLowerCase();
+  if (/bitcoin|btc/.test(t)) return "₿";
+  if (/ethereum|eth/.test(t)) return "⟠";
+  if (/base/.test(t) && /solana/.test(t)) return "🏁";
+  if (/base/.test(t)) return "🔵";
+  if (/solana|sol/.test(t)) return "☀️";
+  if (/tweet|aixbt|twitter/.test(t)) return "🐦";
+  if (/coinbase/.test(t)) return "🏦";
+  if (/dex|volume/.test(t)) return "📊";
+  if (/wallet/.test(t)) return "👛";
+  if (/gas|gwei/.test(t)) return "⛽";
+  if (/tvl/.test(t)) return "💰";
+  if (/token|market cap/.test(t)) return "🎯";
+  if (/election|president|vote/.test(t)) return "🗳️";
+  if (/volatility/.test(t)) return "⚡";
+  if (/price|reach|\$/.test(t)) return "📈";
+  if (/transaction/.test(t)) return "🔄";
+  return "📊";
 }
 
 function formatRelativeDeadline(deadline: number): string {

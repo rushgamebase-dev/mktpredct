@@ -418,8 +418,16 @@ export default function InteractiveChart({
   const chartContent = (h: number) => (
     <div ref={containerRef} className={`w-full relative select-none cursor-crosshair ${className}`} style={{ height: h }}
       onMouseMove={isReady ? handleMouseMove : undefined} onMouseLeave={isReady ? handleMouseLeave : undefined}>
-      {!isReady && <div className="absolute inset-0 skeleton rounded-lg" />}
-      {isReady && (
+      {!mounted && <div className="absolute inset-0 skeleton rounded-lg" />}
+      {mounted && points.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(255,255,255,0.02)" }}>
+          <div className="text-center">
+            <div className="text-2xl mb-2">📊</div>
+            <p className="text-xs text-gray-500">No bets yet — chart appears after first bet</p>
+          </div>
+        </div>
+      )}
+      {isReady && points.length > 0 && (
         <>
           {/* Time range */}
           {showTimeRange && (

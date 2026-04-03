@@ -527,11 +527,21 @@ export default function HeroChart({
         onMouseLeave={isReady ? handleMouseLeave : undefined}
         onClick={isReady ? handleClick : undefined}
       >
-        {!isReady && (
+        {!mounted && (
           <div className="absolute inset-0 rounded-xl animate-pulse" style={{ background: "rgba(255,255,255,0.03)" }} />
         )}
 
-        {isReady && (
+        {mounted && lines.every((l) => l.points.length === 0) && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl" style={{ background: "rgba(255,255,255,0.02)" }}>
+            <div className="text-center">
+              <div className="text-3xl mb-2">📊</div>
+              <p className="text-sm text-gray-500 font-medium">Waiting for market data...</p>
+              <p className="text-[10px] text-gray-600 mt-1">Charts appear when bets are placed</p>
+            </div>
+          </div>
+        )}
+
+        {isReady && lines.some((l) => l.points.length > 0) && (
           <>
             <canvas
               ref={canvasRef}
