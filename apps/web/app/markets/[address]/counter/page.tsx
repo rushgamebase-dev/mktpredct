@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { ArrowLeft, Clock, TrendingUp, Zap, AlertTriangle, Target, Users } from "lucide-react";
@@ -21,7 +22,9 @@ interface Tweet {
   retweetCount: number;
 }
 
-export default function AixbtDemoPage() {
+export default function CounterMarketPage() {
+  const params = useParams();
+  const MARKET_ADDR = (params.address as string)?.toLowerCase() ?? "";
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [todayCount, setTodayCount] = useState(0);
   const [last24hCount, setLast24hCount] = useState(0);
@@ -44,7 +47,6 @@ export default function AixbtDemoPage() {
   const activeCount = period === "today" ? todayCount : last24hCount;
 
   // Real market data for comments + related
-  const MARKET_ADDR = "0x352a950cb6e7249a81cdf7dead3745e2bdd826d0";
   const { data: marketData } = useMarket(MARKET_ADDR);
   const { data: allMarketsData } = useMarkets({ page: 1, pageSize: 20, status: "all" });
   const allMarkets = allMarketsData?.markets ?? [];
@@ -72,7 +74,6 @@ export default function AixbtDemoPage() {
   const fetchTweets = useCallback(async () => {
     try {
       const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-      const MARKET_ADDR = "0x352a950cb6e7249a81cdf7dead3745e2bdd826d0";
       const res = await fetch(`${API}/api/markets/${MARKET_ADDR}/counter`);
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();

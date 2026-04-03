@@ -4,7 +4,7 @@
 
 Prediction market platform on-chain (Base L2). Parimutuel, multi-outcome, ETH-only.
 
-> **Estado atual**: DEPLOYED NA BASE MAINNET. Contratos verificados. Frontend e backend prontos. Falta hosting de produção (API + DB + domínio).
+> **Estado atual**: LIVE EM PRODUÇÃO. 21 markets on-chain, 9 com seed bets. Frontend em markets.rushgame.vip, API no Railway, DB PostgreSQL Railway, RPC Chainstack Growth.
 
 ### Filosofia central
 
@@ -126,14 +126,24 @@ rushpredmkt/
 - Factory deployed + verified na Base mainnet
 - Market #1 deployed + verified na Base mainnet
 
-### O que falta para produção completa
+### O que falta / próximos passos
 
-- [ ] Hosting da API (Railway, Fly.io, VPS)
-- [ ] PostgreSQL de produção (Neon, Supabase, Railway)
-- [ ] Domínio real + HTTPS
-- [ ] Setar NEXT_PUBLIC_API_URL e NEXT_PUBLIC_WS_URL com domínio real
-- [ ] Build do frontend (`next build`) e hosting (Vercel)
-- [ ] Criar mais markets via admin API
+- [ ] LiveActivitySidebar: adicionar polling a cada 10s (hoje só busca 1x no mount)
+- [ ] Auto-resolver (Fase F): markets com deadline curto vão expirar sem resolução
+- [ ] Layout routing genérico (hoje counter redirect hardcoded pro /demo/aixbt)
+- [ ] Mobile polish
+- [ ] SEO: favicon, OG tags, meta por market
+- [ ] Mais data sources (price feeds, Base tx count, etc.)
+
+### Infra de produção (DONE)
+
+- [x] API: Railway (rush-api-production.up.railway.app)
+- [x] DB: Railway PostgreSQL
+- [x] Frontend: Vercel (markets.rushgame.vip)
+- [x] RPC: Chainstack Growth ($49/mês, 200 req/s, archive enabled)
+- [x] Twitter: TwitterAPI.io (counter engine)
+- [x] 21 markets deployed, 9 com seed bets
+- [x] Env vars setadas em Vercel + Railway
 
 ---
 

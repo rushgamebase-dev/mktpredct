@@ -150,9 +150,9 @@ export default function MarketDetailPage() {
   // Counter markets → redirect to dedicated counter layout
   useEffect(() => {
     if (market?.marketType === "counter") {
-      router.replace("/demo/aixbt");
+      router.replace(`/markets/${address}/counter`);
     }
-  }, [market?.marketType, router]);
+  }, [market?.marketType, router, address]);
 
   // Loading skeleton
   if (marketLoading) {
