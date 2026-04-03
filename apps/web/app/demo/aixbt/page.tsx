@@ -127,15 +127,15 @@ export default function AixbtDemoPage() {
 
   // Narrative
   const narrative = useMemo(() => {
-    if (isHit) return "🎉 THRESHOLD HIT! @aixbt_agent crossed 20 tweets. YES wins.";
-    if (isClutch && pace.status !== "behind") return `🔥 ${THRESHOLD - activeCount} to go! Pace is hot — this could flip any minute.`;
-    if (isClutch) return `⚠️ CLUTCH — needs ${THRESHOLD - activeCount} more in ${Math.ceil(hoursLeft)}h. Will AIXBT deliver?`;
-    if (pace.status === "ahead") return `📈 Ahead of pace! Projected ${pace.projected} tweets. YES holders looking strong.`;
-    if (pace.status === "on_track") return "⚡ On track — projected to just barely hit. Every tweet counts now.";
-    if (recentCount >= 3) return `🔥 ${recentCount} tweets in last 30 min! Momentum is building fast.`;
-    if (activeCount === 0) return "🕐 Waiting for first tweet... clock is ticking.";
-    if (hoursLeft < 6) return `⏳ Only ${Math.ceil(hoursLeft)}h left. Needs ${pace.remaining} tweets at ${pace.neededPerHour.toFixed(1)}/hr to hit.`;
-    return `📊 Behind pace. Needs ${pace.remaining} tweets in ${Math.ceil(hoursLeft)}h. NO looking stronger.`;
+    if (isHit) return "🎉 THRESHOLD HIT — YES wins";
+    if (isClutch && pace.status !== "behind") return `🔥 ${THRESHOLD - activeCount} to go — pace is hot`;
+    if (isClutch) return `⚠️ ${THRESHOLD - activeCount} to go — needs ${pace.neededPerHour.toFixed(1)}/hr`;
+    if (recentCount >= 3) return `🔥 ${recentCount} tweets in 30 min — momentum building`;
+    if (pace.status === "ahead") return `📈 Ahead — projected ${pace.projected}`;
+    if (pace.status === "on_track") return "⚡ On track — every tweet counts";
+    if (activeCount === 0) return "🕐 Waiting for first tweet...";
+    if (hoursLeft < 6) return `⏳ ${Math.ceil(hoursLeft)}h left — needs ${pace.remaining} more`;
+    return `📊 Behind — needs ${pace.remaining} in ${Math.ceil(hoursLeft)}h`;
   }, [activeCount, pace, isClutch, isHit, hoursLeft]);
 
   const paceColor = pace.status === "hit" ? "#00ff88" : pace.status === "ahead" ? "#00ff88" : pace.status === "on_track" ? "#ffc828" : "#ff4444";
@@ -182,7 +182,14 @@ export default function AixbtDemoPage() {
         <div className="lg:col-span-3 space-y-4">
 
           {/* BIG COUNTER */}
-          <div className={`card p-6 text-center relative overflow-hidden ${isHit ? "neon-glow" : isClutch ? "neon-glow-danger" : ""}`}>
+          <div
+            className={`card p-6 text-center relative overflow-hidden ${isHit ? "neon-glow" : isClutch ? "neon-glow-danger" : ""}`}
+            style={{
+              transition: "box-shadow 0.3s, border-color 0.3s",
+              boxShadow: newTweetFlash ? "0 0 30px rgba(0,255,136,0.2), inset 0 0 30px rgba(0,255,136,0.03)" : "none",
+              borderColor: newTweetFlash ? "rgba(0,255,136,0.3)" : undefined,
+            }}
+          >
             {/* Countdown prominent */}
             <div className="absolute top-3 right-4 text-right">
               <div className="text-[9px] uppercase tracking-wider text-gray-600">Time left</div>
@@ -299,28 +306,28 @@ export default function AixbtDemoPage() {
             {/* YES/NO — right after counter for impulse */}
             <div className="mt-4 grid grid-cols-2 gap-3">
               <motion.button
-                whileHover={{ scale: 1.03, boxShadow: "0 0 20px rgba(59,130,246,0.3)" }}
-                whileTap={{ scale: 0.97 }}
-                className="rounded-xl py-3 text-center transition-all cursor-pointer"
-                style={{ background: "#3B82F615", border: "2px solid #3B82F650" }}
+                whileHover={{ scale: 1.04, boxShadow: "0 0 30px rgba(59,130,246,0.35)" }}
+                whileTap={{ scale: 0.96 }}
+                className="rounded-xl py-4 text-center cursor-pointer"
+                style={{ background: "#3B82F618", border: "2px solid #3B82F660", transition: "all 0.15s" }}
               >
-                <div className="text-xs text-gray-400">Yes (20+)</div>
-                <motion.div key={`y${Math.round(dynamicYes)}`} initial={{ scale: 1.15 }} animate={{ scale: 1 }} className="text-2xl font-black tabular" style={{ color: "#3B82F6" }}>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Bet Yes</div>
+                <motion.div key={`y${Math.round(dynamicYes)}`} initial={{ scale: 1.2, color: "#60a5fa" }} animate={{ scale: 1, color: "#3B82F6" }} className="text-3xl font-black tabular">
                   {Math.round(dynamicYes)}%
                 </motion.div>
-                <div className="text-[10px] font-bold" style={{ color: "#3B82F6aa" }}>Win ~{(100 / dynamicYes).toFixed(1)}x</div>
+                <div className="text-xs font-bold mt-0.5" style={{ color: "#3B82F6" }}>Win ~{(100 / dynamicYes).toFixed(1)}x</div>
               </motion.button>
               <motion.button
-                whileHover={{ scale: 1.03, boxShadow: "0 0 20px rgba(239,68,68,0.3)" }}
-                whileTap={{ scale: 0.97 }}
-                className="rounded-xl py-3 text-center transition-all cursor-pointer"
-                style={{ background: "#EF444415", border: "2px solid #EF444450" }}
+                whileHover={{ scale: 1.04, boxShadow: "0 0 30px rgba(239,68,68,0.35)" }}
+                whileTap={{ scale: 0.96 }}
+                className="rounded-xl py-4 text-center cursor-pointer"
+                style={{ background: "#EF444418", border: "2px solid #EF444460", transition: "all 0.15s" }}
               >
-                <div className="text-xs text-gray-400">No (under 20)</div>
-                <motion.div key={`n${Math.round(dynamicNo)}`} initial={{ scale: 1.15 }} animate={{ scale: 1 }} className="text-2xl font-black tabular" style={{ color: "#EF4444" }}>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Bet No</div>
+                <motion.div key={`n${Math.round(dynamicNo)}`} initial={{ scale: 1.2, color: "#f87171" }} animate={{ scale: 1, color: "#EF4444" }} className="text-3xl font-black tabular">
                   {Math.round(dynamicNo)}%
                 </motion.div>
-                <div className="text-[10px] font-bold" style={{ color: "#EF4444aa" }}>Win ~{(100 / dynamicNo).toFixed(1)}x</div>
+                <div className="text-xs font-bold mt-0.5" style={{ color: "#EF4444" }}>Win ~{(100 / dynamicNo).toFixed(1)}x</div>
               </motion.button>
             </div>
             <div className="mt-2 text-center text-[10px] text-gray-600 flex items-center justify-center gap-1.5">
@@ -445,11 +452,11 @@ export default function AixbtDemoPage() {
                 {tweets.map((tweet, i) => (
                   <motion.div
                     key={tweet.id}
-                    initial={i === 0 ? { opacity: 0, x: -12, background: "rgba(0,255,136,0.1)" } : false}
-                    animate={{ opacity: 1, x: 0, background: "rgba(255,255,255,0.02)" }}
-                    transition={{ duration: 0.5 }}
-                    className="rounded-lg p-3"
-                    style={{ border: "1px solid var(--border)" }}
+                    initial={i === 0 ? { opacity: 0, x: -16, scale: 0.98 } : false}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className={`rounded-lg p-3 ${i === 0 ? "bet-flash" : ""}`}
+                    style={{ border: i === 0 ? "1px solid rgba(0,255,136,0.2)" : "1px solid var(--border)" }}
                   >
                     <div className="flex items-start gap-2">
                       <span className="text-[10px] font-bold shrink-0 rounded px-1.5 py-0.5 flex items-center gap-1" style={{ background: "rgba(0,255,136,0.08)", color: "#00ff88" }}>
