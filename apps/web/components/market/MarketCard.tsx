@@ -88,7 +88,7 @@ interface MarketCardProps {
   index: number;
 }
 
-export default function MarketCard({ market, index }: MarketCardProps) {
+function MarketCard({ market, index }: MarketCardProps) {
   const router = useRouter();
   const emoji = React.useMemo(() => extractEmoji(market.question), [market.question]);
   const isOpen = market.status === "open";
@@ -219,3 +219,10 @@ export default function MarketCard({ market, index }: MarketCardProps) {
     </motion.div>
   );
 }
+
+export default React.memo(MarketCard, (prev, next) =>
+  prev.market.address === next.market.address &&
+  prev.market.totalPool === next.market.totalPool &&
+  prev.market.status === next.market.status &&
+  prev.index === next.index,
+)

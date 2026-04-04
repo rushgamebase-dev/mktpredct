@@ -145,21 +145,31 @@ export default function InteractiveChart({
     return { high: Math.max(...vals), low: Math.min(...vals), current, change: current - (vals[0] ?? 0) };
   }, [filteredOutcomes]);
 
-  // ResizeObserver
+  // ResizeObserver (debounced via rAF to avoid redraw storms on mobile)
   useEffect(() => {
     setMounted(true);
     const container = containerRef.current;
     if (!container) return;
+    let rafId: number | null = null;
     const update = () => { const r = container.getBoundingClientRect(); setDimensions({ width: r.width, height: r.height }); };
     update();
-    const ro = new ResizeObserver(update);
+    const ro = new ResizeObserver(() => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(update);
+    });
     ro.observe(container);
-    return () => ro.disconnect();
+    return () => { ro.disconnect(); if (rafId) cancelAnimationFrame(rafId); };
   }, [isFullscreen]);
 
-  // Animation
+  // Animation — only on initial mount, not on data updates
+  const hasAnimatedRef = useRef(false);
   useEffect(() => {
     if (!mounted) return;
+    if (hasAnimatedRef.current) {
+      setAnimationProgress(1);
+      return;
+    }
+    hasAnimatedRef.current = true;
     setAnimationProgress(0);
     const start = performance.now();
     const animate = (now: number) => {
@@ -171,16 +181,8 @@ export default function InteractiveChart({
     return () => { if (animationRef.current) cancelAnimationFrame(animationRef.current); };
   }, [mounted, filteredOutcomes]);
 
-  // Pulse
-  useEffect(() => {
-    if (!mounted) return;
-    const anim = (now: number) => {
-      setPulseProgress((Math.sin(((now % 2000) / 2000) * Math.PI * 2 - Math.PI / 2) + 1) / 2);
-      pulseRef.current = requestAnimationFrame(anim);
-    };
-    pulseRef.current = requestAnimationFrame(anim);
-    return () => { if (pulseRef.current) cancelAnimationFrame(pulseRef.current); };
-  }, [mounted]);
+  // Pulse removed — was redrawing entire canvas at 60fps forever (battery drain)
+  // Endpoint dots are still visible via the static draw in the main effect
 
   const getPoint = useCallback(
     (idx: number, value: number, total: number) => ({
@@ -342,7 +344,7 @@ export default function InteractiveChart({
       const val = yMin + (i / gridSteps) * (yMax - yMin);
       ctx.fillText(`${Math.round(val)}%`, dimensions.width - 4, scaleY(val) + 4);
     }
-  }, [dimensions, filteredOutcomes, maxDataPoints, animationProgress, pulseProgress, hoverIndex, hoverX, isBinary, chartWidth, chartHeight, padding]);
+  }, [dimensions, filteredOutcomes, maxDataPoints, animationProgress, hoverIndex, hoverX, isBinary, chartWidth, chartHeight, padding]);
 
   // Pointer logic (shared by mouse + touch)
   const handlePointerAt = useCallback((clientX: number) => {
@@ -426,7 +428,7 @@ export default function InteractiveChart({
   const chartContent = (h: number) => (
     <div ref={containerRef} className={`w-full relative select-none ${className}`} style={{ height: h, touchAction: 'none' }}
       onMouseMove={isReady ? handleMouseMove : undefined} onMouseLeave={isReady ? handlePointerLeave : undefined}
-      onTouchMove={isReady ? handleTouchMove : undefined} onTouchEnd={isReady ? handlePointerLeave : undefined}>
+      onTouchMove={isReady ? handleTouchMove : undefined} onTouchEnd={isReady ? handlePointerLeave : undefined} onTouchCancel={isReady ? handlePointerLeave : undefined}>
       {!mounted && <div className="absolute inset-0 skeleton rounded-lg" />}
       {mounted && points.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(255,255,255,0.02)" }}>

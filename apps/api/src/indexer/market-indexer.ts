@@ -56,7 +56,30 @@ export async function processMarketEvent(
       const poolStr = currentTotalPool.toString()
       const odds = computeOdds(totalPerOutcomeStrings, poolStr)
 
-      // BROADCAST FIRST (low latency) — then DB async
+      // DB writes FIRST — so REST queries after WS event find the data
+      await db
+        .insert(bets)
+        .values({
+          marketAddress: market.address,
+          user: userAddr,
+          outcomeIndex: outcomeIdx,
+          amount,
+          txHash,
+          blockNumber,
+          logIndex,
+          timestamp,
+        })
+        .onConflictDoNothing()
+
+      await db
+        .update(markets)
+        .set({
+          totalPool: poolStr,
+          totalPerOutcome: totalPerOutcomeStrings,
+        })
+        .where(eq(markets.address, market.address))
+
+      // BROADCAST after DB writes — prevents stale REST reads
       const betMsg: WsServerMessage = {
         type: 'bet',
         data: {
@@ -80,29 +103,6 @@ export async function processMarketEvent(
       }
       broadcast.emit(market.address, oddsMsg)
       emitGlobal(oddsMsg, market.address)
-
-      // DB writes (async, non-blocking for latency)
-      await db
-        .insert(bets)
-        .values({
-          marketAddress: market.address,
-          user: userAddr,
-          outcomeIndex: outcomeIdx,
-          amount,
-          txHash,
-          blockNumber,
-          logIndex,
-          timestamp,
-        })
-        .onConflictDoNothing()
-
-      await db
-        .update(markets)
-        .set({
-          totalPool: poolStr,
-          totalPerOutcome: totalPerOutcomeStrings,
-        })
-        .where(eq(markets.address, market.address))
 
       // Stats updates
       try {

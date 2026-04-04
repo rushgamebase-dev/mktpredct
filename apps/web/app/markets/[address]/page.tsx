@@ -4,6 +4,7 @@ import React, { useCallback, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useAccount } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import type { WsServerMessage } from "@rush/shared";
 import { OUTCOME_COLORS } from "@rush/shared";
@@ -29,17 +30,20 @@ export default function MarketDetailPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
+  const { address: userAddress } = useAccount();
   const { data: market, isLoading: marketLoading, error: marketError } = useMarket(address);
   const { data: chartData } = useChart(address);
   const { data: allMarketsData } = useMarkets({ page: 1, pageSize: 20, status: "all" });
   const allMarkets = allMarketsData?.markets ?? [];
 
-  // WebSocket: update cache directly with WS payload (no stale DB refetch)
+  // ---------------------------------------------------------------------------
+  // WebSocket: event-driven, zero invalidateQueries
+  // WS = source of truth in real-time, REST = snapshot initial + recovery
+  // ---------------------------------------------------------------------------
   const handleWsMessage = useCallback(
     (msg: WsServerMessage) => {
-      console.log(`[WS_UI] received: ${msg.type}`, msg.type === "bet" ? `tx=${(msg.data as any).txHash?.slice(0, 10)}` : "");
       if (msg.type === "odds_update") {
-        // Use WS payload directly — faster than invalidate→refetch from DB
+        // Market state: direct cache update
         queryClient.setQueryData(["market", address], (old: any) => {
           if (!old) return old;
           return {
@@ -49,27 +53,78 @@ export default function MarketDetailPage() {
             odds: msg.data.odds,
           };
         });
+        // Chart: append point (no refetch)
+        queryClient.setQueryData(["chart", address], (old: any) => {
+          if (!old?.points) return old;
+          return {
+            ...old,
+            points: [...old.points, { timestamp: Math.floor(Date.now() / 1000), odds: msg.data.odds }],
+          };
+        });
       }
       if (msg.type === "bet") {
-        // Chart needs full reconstruction from DB
-        queryClient.invalidateQueries({ queryKey: ["chart", address] });
-        // Positions need fresh on-chain read
-        queryClient.invalidateQueries({ queryKey: ["positions", address] });
-        // Activity feed has refetchInterval: false — must invalidate here
-        queryClient.invalidateQueries({ queryKey: ["activity", address] });
+        // Positions: update locally if it's the current user's bet
+        if (userAddress && msg.data.user.toLowerCase() === userAddress.toLowerCase()) {
+          queryClient.setQueryData(["positions", address, userAddress], (old: any) => {
+            if (!old) return old;
+            const idx = msg.data.outcomeIndex;
+            const existing = old.positions.find((p: any) => p.outcomeIndex === idx);
+            const positions = existing
+              ? old.positions.map((p: any) =>
+                  p.outcomeIndex === idx
+                    ? { ...p, amount: (BigInt(p.amount) + BigInt(msg.data.amount)).toString() }
+                    : p
+                )
+              : [...old.positions, { outcomeIndex: idx, amount: msg.data.amount, label: "" }];
+            return {
+              ...old,
+              positions,
+              totalBet: (BigInt(old.totalBet) + BigInt(msg.data.amount)).toString(),
+            };
+          });
+        }
+        // Activity feed is updated live via its own WS handler (ActivityFeed.tsx)
       }
       if (msg.type === "status_change") {
-        queryClient.invalidateQueries({ queryKey: ["market", address] });
-        queryClient.invalidateQueries({ queryKey: ["positions", address] });
+        // Market state: direct update
+        queryClient.setQueryData(["market", address], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            status: msg.data.status,
+            winningOutcome: msg.data.winningOutcome,
+            ...(msg.data.status === "resolved" ? { resolvedAt: Math.floor(Date.now() / 1000) } : {}),
+          };
+        });
+        // On resolve, claimable needs on-chain read — only case where refetch is necessary
+        if (msg.data.status === "resolved" && userAddress) {
+          queryClient.invalidateQueries({ queryKey: ["positions", address, userAddress] });
+        }
       }
       if (msg.type === "claim") {
-        queryClient.invalidateQueries({ queryKey: ["positions", address] });
+        // If current user claimed, update locally
+        if (userAddress && msg.data.user.toLowerCase() === userAddress.toLowerCase()) {
+          queryClient.setQueryData(["positions", address, userAddress], (old: any) => {
+            if (!old) return old;
+            return { ...old, claimed: true, claimable: "0" };
+          });
+        }
       }
     },
-    [address, queryClient],
+    [address, queryClient, userAddress],
   );
 
-  useMarketFeed(address, handleWsMessage);
+  // On WS reconnect: refetch everything (recovery from missed events)
+  const handleReconnect = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["market", address] });
+    queryClient.invalidateQueries({ queryKey: ["chart", address] });
+    if (userAddress) {
+      queryClient.invalidateQueries({ queryKey: ["positions", address, userAddress] });
+    }
+    queryClient.invalidateQueries({ queryKey: ["activity", address] });
+  }, [queryClient, address, userAddress]);
+
+  useMarketFeed(address, handleWsMessage, handleReconnect);
 
   // Activity data for micro-stats
   const { data: activity } = useActivity(address);

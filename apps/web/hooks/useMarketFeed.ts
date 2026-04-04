@@ -8,13 +8,17 @@ const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3000";
 export function useMarketFeed(
   address: string | undefined,
   onMessage: (msg: WsServerMessage) => void,
+  onReconnect?: () => void,
 ) {
   const wsRef = useRef<WebSocket | null>(null);
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
+  const onReconnectRef = useRef(onReconnect);
+  onReconnectRef.current = onReconnect;
 
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const reconnectAttemptRef = useRef(0);
+  const hadConnectionRef = useRef(false);
 
   const connect = useCallback(() => {
     if (!address) return;
@@ -28,7 +32,12 @@ export function useMarketFeed(
     const ws = new WebSocket(`${WS_BASE}/ws/${address}`);
 
     ws.onopen = () => {
+      const isReconnect = hadConnectionRef.current && reconnectAttemptRef.current > 0;
       reconnectAttemptRef.current = 0;
+      hadConnectionRef.current = true;
+      if (isReconnect && onReconnectRef.current) {
+        onReconnectRef.current();
+      }
     };
 
     ws.onmessage = (event) => {

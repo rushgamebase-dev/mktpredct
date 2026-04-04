@@ -114,17 +114,43 @@ export default function HomePage() {
             ),
           };
         });
+        // Append synthetic point to hero chart so it updates live
+        setChartDataMap((prev) => {
+          if (!prev[addr]) return prev;
+          return {
+            ...prev,
+            [addr]: [...prev[addr], { timestamp: Math.floor(Date.now() / 1000), odds: msg.data.odds }],
+          };
+        });
         break;
       case "status_change":
-        queryClient.invalidateQueries({ queryKey: ["markets"] });
+        // Direct update: set status on the affected market
+        queryClient.setQueryData(["markets", page, 20, status === "all" ? "all" : status], (old: any) => {
+          if (!old?.markets) return old;
+          return {
+            ...old,
+            markets: old.markets.map((m: any) =>
+              m.address === addr
+                ? { ...m, status: msg.data.status, winningOutcome: msg.data.winningOutcome }
+                : m
+            ),
+          };
+        });
         break;
       case "counter_update":
-        queryClient.invalidateQueries({ queryKey: ["markets"] });
+        // Counter data doesn't live in markets list cache — no-op here
+        // Counter markets have their own dedicated page
         break;
     }
   }, [queryClient, page, status]);
 
-  useGlobalFeed(handleGlobalMessage);
+  // On WS reconnect: refetch markets list (recovery from missed events)
+  const handleGlobalReconnect = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["markets"] });
+    setChartDataMap({}); // Clear chart cache — will refetch fresh
+  }, [queryClient]);
+
+  useGlobalFeed(handleGlobalMessage, handleGlobalReconnect);
 
   // Hero chart: counter markets first (AIXBT etc), then by pool, max 5
   const heroMarkets = useMemo(
@@ -463,7 +489,7 @@ export default function HomePage() {
       {/* ---- Markets grid ---- */}
       {data && data.markets.length > 0 && (
         <AnimatePresence mode="wait">
-          <motion.div key={status} {...tabContent}>
+          <motion.div key="market-grid" {...tabContent}>
             <motion.div
               variants={staggerContainer}
               initial="hidden"

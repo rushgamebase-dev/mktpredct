@@ -169,27 +169,37 @@ export default function HeroChart({
   );
 
   // ---------------------------------------------------------------------------
-  // ResizeObserver
+  // ResizeObserver (debounced via rAF)
   // ---------------------------------------------------------------------------
   useEffect(() => {
     setMounted(true);
     const container = containerRef.current;
     if (!container) return;
+    let rafId: number | null = null;
     const update = () => {
       const rect = container.getBoundingClientRect();
       setDimensions({ width: rect.width, height: rect.height });
     };
     update();
-    const ro = new ResizeObserver(update);
+    const ro = new ResizeObserver(() => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(update);
+    });
     ro.observe(container);
-    return () => ro.disconnect();
+    return () => { ro.disconnect(); if (rafId) cancelAnimationFrame(rafId); };
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Draw animation
+  // Draw animation — only on initial mount
   // ---------------------------------------------------------------------------
+  const hasAnimatedRef = useRef(false);
   useEffect(() => {
     if (!mounted) return;
+    if (hasAnimatedRef.current) {
+      setAnimProgress(1);
+      return;
+    }
+    hasAnimatedRef.current = true;
     setAnimProgress(0);
     const start = performance.now();
     const duration = 900;
@@ -203,19 +213,7 @@ export default function HeroChart({
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [mounted, lines.length]);
 
-  // ---------------------------------------------------------------------------
-  // Pulse animation
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    if (!mounted) return;
-    const animatePulse = (now: number) => {
-      const cycle = (now % 2000) / 2000;
-      setPulseProgress((Math.sin(cycle * Math.PI * 2 - Math.PI / 2) + 1) / 2);
-      pulseRef.current = requestAnimationFrame(animatePulse);
-    };
-    pulseRef.current = requestAnimationFrame(animatePulse);
-    return () => { if (pulseRef.current) cancelAnimationFrame(pulseRef.current); };
-  }, [mounted]);
+  // Pulse removed — was redrawing entire canvas at 60fps forever (battery drain)
 
   // NO simulated real-time — chart updates only via real data from API/WebSocket
 
@@ -542,6 +540,7 @@ export default function HeroChart({
         onMouseLeave={isReady ? handlePointerLeave : undefined}
         onTouchMove={isReady ? handleTouchMove : undefined}
         onTouchEnd={isReady ? handlePointerLeave : undefined}
+        onTouchCancel={isReady ? handlePointerLeave : undefined}
         onClick={isReady ? handleClick : undefined}
       >
         {!mounted && (

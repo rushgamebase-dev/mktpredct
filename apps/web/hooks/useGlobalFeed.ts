@@ -7,13 +7,17 @@ const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3000"
 
 export function useGlobalFeed(
   onMessage: (msg: WsGlobalMessage) => void,
+  onReconnect?: () => void,
 ) {
   const wsRef = useRef<WebSocket | null>(null)
   const onMessageRef = useRef(onMessage)
   onMessageRef.current = onMessage
+  const onReconnectRef = useRef(onReconnect)
+  onReconnectRef.current = onReconnect
 
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
   const reconnectAttemptRef = useRef(0)
+  const hadConnectionRef = useRef(false)
 
   const connect = useCallback(() => {
     if (wsRef.current) {
@@ -24,7 +28,12 @@ export function useGlobalFeed(
     const ws = new WebSocket(`${WS_BASE}/ws/global`)
 
     ws.onopen = () => {
+      const isReconnect = hadConnectionRef.current && reconnectAttemptRef.current > 0
       reconnectAttemptRef.current = 0
+      hadConnectionRef.current = true
+      if (isReconnect && onReconnectRef.current) {
+        onReconnectRef.current()
+      }
     }
 
     ws.onmessage = (event) => {
