@@ -21,7 +21,9 @@ const blockBuffer = new Map<bigint, Array<{
 }>>()
 
 let flushTimer: ReturnType<typeof setTimeout> | null = null
+let flushScheduledAt: number | null = null
 const FLUSH_DELAY = 10 // ms — flush after block settles
+const MAX_FLUSH_WAIT = 100 // ms — max wait before forced flush
 
 async function flushBlock(blockNumber: bigint): Promise<void> {
   const events = blockBuffer.get(blockNumber)
@@ -93,15 +95,22 @@ function bufferEvent(
   }
   blockBuffer.get(blockNumber)!.push({ eventName, args, address, txHash, blockNumber, logIndex })
 
-  // Debounce: flush after FLUSH_DELAY ms of no new events for this block
+  // Debounce with max wait: flush after FLUSH_DELAY of quiet, but never wait longer than MAX_FLUSH_WAIT
+  const now = Date.now()
+  if (!flushScheduledAt) flushScheduledAt = now
+
   if (flushTimer) clearTimeout(flushTimer)
+
+  const elapsed = now - flushScheduledAt
+  const delay = Math.min(FLUSH_DELAY, Math.max(0, MAX_FLUSH_WAIT - elapsed))
+
   flushTimer = setTimeout(async () => {
-    // Flush all buffered blocks in order
+    flushScheduledAt = null
     const blocks = [...blockBuffer.keys()].sort((a, b) => (a < b ? -1 : 1))
     for (const bn of blocks) {
       await flushBlock(bn)
     }
-  }, FLUSH_DELAY)
+  }, delay)
 }
 
 // ---------------------------------------------------------------------------
@@ -259,6 +268,10 @@ export async function startChainWatcher(): Promise<void> {
 }
 
 export function stopChainWatcher(): void {
+  if (flushTimer) {
+    clearTimeout(flushTimer)
+    flushTimer = null
+  }
   for (const unwatch of unwatchers) {
     unwatch()
   }

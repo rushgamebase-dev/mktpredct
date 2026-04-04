@@ -8,6 +8,6 @@ export function useMarket(address: string) {
     queryFn: () => apiGet<MarketDetailResponse>(`/api/markets/${address}`),
     enabled: !!address,
     staleTime: 10_000,
-    refetchInterval: 30_000, // Safety net if WS drops
+    refetchInterval: 60_000, // Safety net — WS handles real-time updates
   });
 }

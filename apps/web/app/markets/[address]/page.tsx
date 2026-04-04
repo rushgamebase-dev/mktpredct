@@ -55,6 +55,8 @@ export default function MarketDetailPage() {
         queryClient.invalidateQueries({ queryKey: ["chart", address] });
         // Positions need fresh on-chain read
         queryClient.invalidateQueries({ queryKey: ["positions", address] });
+        // Activity feed has refetchInterval: false — must invalidate here
+        queryClient.invalidateQueries({ queryKey: ["activity", address] });
       }
       if (msg.type === "status_change") {
         queryClient.invalidateQueries({ queryKey: ["market", address] });

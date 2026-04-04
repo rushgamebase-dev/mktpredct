@@ -17,6 +17,6 @@ export function useMarkets(params?: MarketsListQuery) {
     queryKey: ["markets", page, pageSize, status],
     queryFn: () => apiGet<MarketsListResponse>(`/api/markets?${queryString}`),
     staleTime: 10_000,
-    refetchInterval: 15_000, // WS invalidates on events, this is safety net
+    refetchInterval: 60_000, // Safety net — WS handles real-time updates
   });
 }

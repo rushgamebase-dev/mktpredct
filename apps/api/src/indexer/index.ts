@@ -3,7 +3,7 @@ import { syncFactory } from './factory-indexer.js'
 import { syncMarkets } from './market-indexer.js'
 
 const CONFIRMATION_BLOCKS = 5n
-const POLL_INTERVAL = wsPublicClient ? 10_000 : 2000
+const POLL_INTERVAL = wsPublicClient ? 60_000 : 2000
 
 let running = false
 const startedAt = Date.now()

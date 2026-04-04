@@ -2,14 +2,16 @@ import { eq } from 'drizzle-orm'
 import { markets, counterState } from '@rush/shared/db/schema'
 import { MarketABI } from '@rush/shared'
 import { db } from '../db.js'
-import { publicClient, walletClient } from './chain.js'
+import { publicClient, walletClient, ownerAccount } from './chain.js'
 import { signResolve } from './oracle.js'
 
 const CHECK_INTERVAL = 30_000 // 30s normal
 const NEAR_DEADLINE_INTERVAL = 5_000 // 5s when close to deadline
 const NEAR_DEADLINE_WINDOW = 120 // 2 min before deadline = high frequency
+const MAX_RESOLVE_ATTEMPTS = 3
 
 let running = false
+const failedAttempts = new Map<string, number>()
 
 async function checkAndResolve(): Promise<void> {
   if (running) return
@@ -80,7 +82,14 @@ async function checkAndResolve(): Promise<void> {
       const winningOutcome = currentCount >= threshold ? 0 : 1
       console.log(`[AutoResolver] ${addr.slice(0, 10)}... winner: ${winningOutcome === 0 ? 'Yes' : 'No'} (outcome ${winningOutcome})`)
 
-      // 4. Sign resolve
+      // 4. TX safety: getCode check
+      const code = await publicClient.getCode({ address: addr })
+      if (!code || code === '0x') {
+        console.error(`[AutoResolver] ${addr.slice(0, 10)}... no contract code, skipping`)
+        continue
+      }
+
+      // 5. Sign resolve
       let signature: `0x${string}`
       try {
         signature = await signResolve(addr, winningOutcome)
@@ -90,7 +99,28 @@ async function checkAndResolve(): Promise<void> {
         continue
       }
 
-      // 5. Send resolve tx
+      // 6. TX safety: simulate before send
+      try {
+        await publicClient.simulateContract({
+          address: addr,
+          abi: MarketABI,
+          functionName: 'resolve',
+          args: [BigInt(winningOutcome), signature],
+          account: ownerAccount.address,
+        })
+      } catch (e: any) {
+        console.error(`[AutoResolver] ${addr.slice(0, 10)}... simulation failed: ${e.message?.slice(0, 100)}`)
+        const attempts = (failedAttempts.get(market.address) ?? 0) + 1
+        failedAttempts.set(market.address, attempts)
+        if (attempts >= MAX_RESOLVE_ATTEMPTS) {
+          console.error(`[AutoResolver] ${addr.slice(0, 10)}... max attempts reached, marking expired`)
+          await db.update(markets).set({ status: 'expired' }).where(eq(markets.address, market.address))
+          failedAttempts.delete(market.address)
+        }
+        continue
+      }
+
+      // 7. Send resolve tx
       try {
         const txHash = await walletClient.writeContract({
           address: addr,
@@ -100,25 +130,40 @@ async function checkAndResolve(): Promise<void> {
         })
         console.log(`[AutoResolver] ${addr.slice(0, 10)}... tx sent: ${txHash}`)
 
-        // 6. Wait for receipt
+        // 8. Wait for receipt
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
 
         if (receipt.status === 'success') {
           console.log(`[AutoResolver] ${addr.slice(0, 10)}... RESOLVED ✓ | outcome=${winningOutcome} (${winningOutcome === 0 ? 'Yes' : 'No'}) | block=${receipt.blockNumber} | tx=${txHash}`)
 
-          // 7. Update DB
+          // 9. Update DB
           await db.update(markets).set({
             status: 'resolved',
             winningOutcome,
             resolvedAt: Math.floor(Date.now() / 1000),
           }).where(eq(markets.address, market.address))
 
+          failedAttempts.delete(market.address)
           console.log(`[AutoResolver] ${addr.slice(0, 10)}... DB updated`)
         } else {
-          console.error(`[AutoResolver] ${addr.slice(0, 10)}... tx reverted: ${txHash}`)
+          const attempts = (failedAttempts.get(market.address) ?? 0) + 1
+          failedAttempts.set(market.address, attempts)
+          console.error(`[AutoResolver] ${addr.slice(0, 10)}... tx reverted (attempt ${attempts}/${MAX_RESOLVE_ATTEMPTS}): ${txHash}`)
+          if (attempts >= MAX_RESOLVE_ATTEMPTS) {
+            console.error(`[AutoResolver] ${addr.slice(0, 10)}... max attempts reached, marking expired`)
+            await db.update(markets).set({ status: 'expired' }).where(eq(markets.address, market.address))
+            failedAttempts.delete(market.address)
+          }
         }
       } catch (e: any) {
-        console.error(`[AutoResolver] Resolve tx failed for ${addr.slice(0, 10)}...: ${e.message?.slice(0, 100)}`)
+        const attempts = (failedAttempts.get(market.address) ?? 0) + 1
+        failedAttempts.set(market.address, attempts)
+        console.error(`[AutoResolver] Resolve tx failed for ${addr.slice(0, 10)}... (attempt ${attempts}/${MAX_RESOLVE_ATTEMPTS}): ${e.message?.slice(0, 100)}`)
+        if (attempts >= MAX_RESOLVE_ATTEMPTS) {
+          console.error(`[AutoResolver] ${addr.slice(0, 10)}... max attempts reached, marking expired`)
+          await db.update(markets).set({ status: 'expired' }).where(eq(markets.address, market.address))
+          failedAttempts.delete(market.address)
+        }
       }
     }
   } catch (e: any) {
@@ -129,31 +174,33 @@ async function checkAndResolve(): Promise<void> {
 }
 
 export function startAutoResolver(): void {
-  console.log('[AutoResolver] Starting (30s check, 5s near deadline)')
+  console.log('[AutoResolver] Starting (adaptive interval: 30s normal, 5s near deadline)')
 
-  // Normal check every 30s
-  setInterval(checkAndResolve, CHECK_INTERVAL)
+  async function loop(): Promise<void> {
+    await checkAndResolve()
 
-  // Near-deadline high-frequency check every 5s
-  setInterval(async () => {
-    const now = Math.floor(Date.now() / 1000)
-    const openCounters = await db.select().from(markets)
-      .where(eq(markets.status, 'open'))
+    // Determine next interval based on deadline proximity
+    let nextInterval = CHECK_INTERVAL
+    try {
+      const now = Math.floor(Date.now() / 1000)
+      const openCounters = await db.select().from(markets)
+        .where(eq(markets.status, 'open'))
 
-    const nearDeadline = openCounters.some((m) => {
-      return m.marketType === 'counter' && m.deadline > now && m.deadline - now <= NEAR_DEADLINE_WINDOW
-    })
-
-    // Also check if any already past deadline
-    const pastDeadline = openCounters.some((m) => {
-      return m.marketType === 'counter' && m.deadline <= now
-    })
-
-    if (nearDeadline || pastDeadline) {
-      await checkAndResolve()
+      const needsFastCheck = openCounters.some((m) =>
+        m.marketType === 'counter' && (
+          m.deadline <= now || // past deadline
+          (m.deadline > now && m.deadline - now <= NEAR_DEADLINE_WINDOW) // near deadline
+        )
+      )
+      if (needsFastCheck) {
+        nextInterval = NEAR_DEADLINE_INTERVAL
+      }
+    } catch {
+      // Fall through with default interval
     }
-  }, NEAR_DEADLINE_INTERVAL)
 
-  // Initial check
-  checkAndResolve()
+    setTimeout(loop, nextInterval)
+  }
+
+  loop()
 }

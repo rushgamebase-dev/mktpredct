@@ -65,6 +65,7 @@ export default function BetForm({
   const handleReset = () => {
     reset();
     setAmount("");
+    queryClient.invalidateQueries({ queryKey: ["market", marketAddress] });
   };
 
   if (!isConnected) {
