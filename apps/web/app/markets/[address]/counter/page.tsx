@@ -153,17 +153,16 @@ export default function CounterMarketPage() {
 
   useMarketFeed(MARKET_ADDR, handleWsMessage);
 
-  // Countdown
+  // Countdown — uses market deadline, not midnight
+  const marketDeadline = marketData?.deadline ?? 0;
   useEffect(() => {
     const tick = () => {
-      const now = new Date();
-      const midnight = new Date(now);
-      midnight.setUTCHours(23, 59, 59, 999);
-      const diff = Math.max(0, Math.floor((midnight.getTime() - now.getTime()) / 1000));
+      const now = Math.floor(Date.now() / 1000);
+      const diff = Math.max(0, (marketDeadline || Math.floor(Date.now() / 1000) + 86400) - now);
       const h = Math.floor(diff / 3600);
       const m = Math.floor((diff % 3600) / 60);
       const s = diff % 60;
-      setCountdown(`${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`);
+      setCountdown(diff <= 0 ? "Ended" : `${h}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`);
       setHoursLeft(diff / 3600);
     };
     tick();
