@@ -29,6 +29,23 @@ export default function Header() {
   const searchParams = useSearchParams();
 
   const [showConnectors, setShowConnectors] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Close connector dropdown on outside click/tap
+  React.useEffect(() => {
+    if (!showConnectors) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowConnectors(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showConnectors]);
 
   const activeCategory = searchParams.get("category") || "all";
 
@@ -127,7 +144,7 @@ export default function Header() {
               </button>
             </div>
           ) : (
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowConnectors(!showConnectors)}
                 className="btn-primary flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs font-bold"

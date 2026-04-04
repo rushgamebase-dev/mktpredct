@@ -119,8 +119,7 @@ export default function BetForm({
         {/* Outcome selector -- grid of cards */}
         <div className="mb-3">
           <div
-            className="grid gap-2"
-            style={{ gridTemplateColumns: `repeat(${Math.min(labels.length, 3)}, 1fr)` }}
+            className={`grid gap-2 ${labels.length <= 2 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'}`}
           >
             {labels.map((label, i) => {
               const color = OUTCOME_COLORS[i % OUTCOME_COLORS.length];
@@ -170,13 +169,13 @@ export default function BetForm({
             />
           </div>
           {/* Quick amount buttons */}
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex gap-1.5">
             {["0.01", "0.05", "0.1", "0.5", "Max"].map((v) => (
               <button
                 key={v}
                 type="button"
                 onClick={() => setAmount(v === "Max" ? "1" : v)}
-                className="flex-1 rounded-lg py-1.5 text-xs font-bold transition-colors hover:bg-white/10"
+                className="flex-1 rounded-lg py-2 text-xs font-bold transition-colors hover:bg-white/10"
                 style={{
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid var(--border)",

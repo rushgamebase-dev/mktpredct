@@ -160,7 +160,7 @@ export default function MarketCard({ market, index }: MarketCardProps) {
               <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => router.push(`/markets/${market.address}?outcome=${i}`)}
-                  className="px-2.5 py-1 rounded text-[11px] font-bold transition-all hover:scale-110 active:scale-95"
+                  className="px-3 py-1.5 rounded text-[11px] font-bold transition-all hover:scale-110 active:scale-95"
                   style={{
                     background: "rgba(16,185,129,0.15)",
                     color: "#10B981",
@@ -175,7 +175,7 @@ export default function MarketCard({ market, index }: MarketCardProps) {
                     const noIdx = i === 0 && market.labels.length > 1 ? 1 : 0;
                     router.push(`/markets/${market.address}?outcome=${noIdx}`);
                   }}
-                  className="px-2.5 py-1 rounded text-[11px] font-bold transition-all hover:scale-110 active:scale-95"
+                  className="px-3 py-1.5 rounded text-[11px] font-bold transition-all hover:scale-110 active:scale-95"
                   style={{
                     background: "rgba(239,68,68,0.15)",
                     color: "#EF4444",

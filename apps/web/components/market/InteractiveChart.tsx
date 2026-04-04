@@ -344,12 +344,12 @@ export default function InteractiveChart({
     }
   }, [dimensions, filteredOutcomes, maxDataPoints, animationProgress, pulseProgress, hoverIndex, hoverX, isBinary, chartWidth, chartHeight, padding]);
 
-  // Mouse
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  // Pointer logic (shared by mouse + touch)
+  const handlePointerAt = useCallback((clientX: number) => {
     const container = containerRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    const x = e.clientX - rect.left;
+    const x = clientX - rect.left;
     const relX = x - padding.left;
     const idx = Math.round((relX / chartWidth) * (maxDataPoints - 1));
     if (idx >= 0 && idx < maxDataPoints && relX >= 0 && relX <= chartWidth) {
@@ -359,7 +359,15 @@ export default function InteractiveChart({
     }
   }, [chartWidth, maxDataPoints, padding.left]);
 
-  const handleMouseLeave = useCallback(() => { setHoverIndex(null); setHoverX(null); }, []);
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    handlePointerAt(e.clientX);
+  }, [handlePointerAt]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length > 0) handlePointerAt(e.touches[0].clientX);
+  }, [handlePointerAt]);
+
+  const handlePointerLeave = useCallback(() => { setHoverIndex(null); setHoverX(null); }, []);
 
   // Current values for labels
   const currentValues = useMemo(() => {
@@ -416,8 +424,9 @@ export default function InteractiveChart({
   }, [filteredOutcomes, padding.top, chartHeight]);
 
   const chartContent = (h: number) => (
-    <div ref={containerRef} className={`w-full relative select-none cursor-crosshair ${className}`} style={{ height: h }}
-      onMouseMove={isReady ? handleMouseMove : undefined} onMouseLeave={isReady ? handleMouseLeave : undefined}>
+    <div ref={containerRef} className={`w-full relative select-none ${className}`} style={{ height: h, touchAction: 'none' }}
+      onMouseMove={isReady ? handleMouseMove : undefined} onMouseLeave={isReady ? handlePointerLeave : undefined}
+      onTouchMove={isReady ? handleTouchMove : undefined} onTouchEnd={isReady ? handlePointerLeave : undefined}>
       {!mounted && <div className="absolute inset-0 skeleton rounded-lg" />}
       {mounted && points.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(255,255,255,0.02)" }}>
@@ -434,7 +443,7 @@ export default function InteractiveChart({
             <div className="absolute top-0 left-0 flex items-center gap-1 px-2 z-20" style={{ top: 8 }}>
               {TIME_RANGES.map((r) => (
                 <button key={r.value} onClick={() => setSelectedTimeRange(r.value)}
-                  className="px-2.5 py-1 text-xs font-bold rounded-md transition-all"
+                  className="px-2 py-1.5 sm:px-2.5 text-xs font-bold rounded-md transition-all"
                   style={selectedTimeRange === r.value
                     ? { background: "#00ff88", color: "#000" }
                     : { background: "transparent", color: "#666" }}>
@@ -546,7 +555,7 @@ export default function InteractiveChart({
 
   // Stats
   const statsGrid = (
-    <div className="grid grid-cols-4 gap-3 px-3 pb-3">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 px-3 pb-3">
       {[
         { label: "High", value: chartStats.high, color: "#00ff88" },
         { label: "Low", value: chartStats.low, color: "#ff4444" },
@@ -572,7 +581,7 @@ export default function InteractiveChart({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex-1">{chartContent(window.innerHeight - 120)}</div>
+        <div className="flex-1">{chartContent((window.visualViewport?.height ?? window.innerHeight) - 120)}</div>
         {statsGrid}
       </div>
     );

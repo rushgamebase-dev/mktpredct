@@ -379,13 +379,14 @@ export default function HeroChart({
   // ---------------------------------------------------------------------------
   // Mouse handlers
   // ---------------------------------------------------------------------------
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
+  // Pointer logic (shared by mouse + touch)
+  const handlePointerAt = useCallback(
+    (clientX: number, clientY: number) => {
       const container = containerRef.current;
       if (!container) return;
       const rect = container.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
+      const mx = clientX - rect.left;
+      const my = clientY - rect.top;
       mouseRef.current = { x: mx, y: my };
 
       if (mx >= padding.left && mx <= padding.left + chartWidth) {
@@ -426,7 +427,21 @@ export default function HeroChart({
     [lines, onHoverMarket, padding, chartWidth, chartHeight, allTimes],
   );
 
-  const handleMouseLeave = useCallback(() => {
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      handlePointerAt(e.clientX, e.clientY);
+    },
+    [handlePointerAt],
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      if (e.touches.length > 0) handlePointerAt(e.touches[0].clientX, e.touches[0].clientY);
+    },
+    [handlePointerAt],
+  );
+
+  const handlePointerLeave = useCallback(() => {
     mouseRef.current = null;
     setMouseX(null);
     onHoverMarket(null);
@@ -521,10 +536,12 @@ export default function HeroChart({
       {/* Chart container */}
       <div
         ref={containerRef}
-        className="w-full relative select-none cursor-crosshair"
-        style={{ height }}
+        className="w-full relative select-none"
+        style={{ height, touchAction: 'none' }}
         onMouseMove={isReady ? handleMouseMove : undefined}
-        onMouseLeave={isReady ? handleMouseLeave : undefined}
+        onMouseLeave={isReady ? handlePointerLeave : undefined}
+        onTouchMove={isReady ? handleTouchMove : undefined}
+        onTouchEnd={isReady ? handlePointerLeave : undefined}
         onClick={isReady ? handleClick : undefined}
       >
         {!mounted && (

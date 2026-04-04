@@ -57,6 +57,16 @@ export default function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  // Responsive hero chart height
+  const [heroHeight, setHeroHeight] = useState(480);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const update = () => setHeroHeight(mq.matches ? 320 : 480);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
   // Market selection / hover
   const [selectedMarket, setSelectedMarket] = useState<string | null>(null);
   const [hoveredMarket, setHoveredMarket] = useState<string | null>(null);
@@ -277,12 +287,12 @@ export default function HomePage() {
               onSelectMarket={setSelectedMarket}
               hoveredMarket={hoveredMarket}
               onHoverMarket={setHoveredMarket}
-              height={480}
+              height={heroHeight}
             />
           ) : (
             <div
               className="flex items-center justify-center animate-pulse"
-              style={{ height: 480, background: "rgba(255,255,255,0.02)" }}
+              style={{ height: heroHeight, background: "rgba(255,255,255,0.02)" }}
             >
               <span className="text-xs text-gray-600">Loading chart...</span>
             </div>
@@ -323,7 +333,7 @@ export default function HomePage() {
         </div>
 
         {/* Activity sidebar -- desktop: full height, mobile: capped */}
-        <div className="lg:col-span-3 max-h-[200px] lg:max-h-none">
+        <div className="lg:col-span-3 max-h-[280px] lg:max-h-none">
           {markets.length > 0 ? (
             <LiveActivitySidebar markets={markets} lastWsBet={lastWsBet} />
           ) : (

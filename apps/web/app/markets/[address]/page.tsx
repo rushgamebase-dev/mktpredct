@@ -118,6 +118,16 @@ export default function MarketDetailPage() {
     return () => clearInterval(iv);
   }, [market]);
 
+  // Responsive chart height
+  const [chartH, setChartH] = useState(360);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const update = () => setChartH(mq.matches ? 280 : 360);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
   // Colors (needed by hooks below, safe even when market is null)
   const colors = useMemo(
     () => (market?.labels ?? []).map((_, i) => OUTCOME_COLORS[i % OUTCOME_COLORS.length]),
@@ -422,7 +432,7 @@ export default function MarketDetailPage() {
               labels={market.labels}
               colors={colors}
               annotations={chartAnnotations}
-              height={360}
+              height={chartH}
               defaultTimeRange="1D"
             />
           </div>
@@ -451,6 +461,14 @@ export default function MarketDetailPage() {
                       (e.currentTarget as HTMLElement).style.borderColor = btnColor + "80";
                     }}
                     onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.boxShadow = "none";
+                      (e.currentTarget as HTMLElement).style.borderColor = btnColor + "40";
+                    }}
+                    onTouchStart={(e) => {
+                      (e.currentTarget as HTMLElement).style.boxShadow = `0 0 24px ${btnColor}30`;
+                      (e.currentTarget as HTMLElement).style.borderColor = btnColor + "80";
+                    }}
+                    onTouchEnd={(e) => {
                       (e.currentTarget as HTMLElement).style.boxShadow = "none";
                       (e.currentTarget as HTMLElement).style.borderColor = btnColor + "40";
                     }}

@@ -277,7 +277,7 @@ export default function CounterMarketPage() {
               initial={{ scale: 1.4, color: "#00ff88" }}
               animate={{ scale: 1, color: isHit ? "#00ff88" : "#ffffff" }}
               transition={{ type: "spring", stiffness: 300, damping: 15 }}
-              className="text-8xl font-black tabular"
+              className="text-5xl sm:text-8xl font-black tabular"
             >
               {loading ? "..." : activeCount}
             </motion.div>
@@ -340,7 +340,7 @@ export default function CounterMarketPage() {
             </div>
 
             {/* Pace stats */}
-            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+            <div className="mt-4 grid grid-cols-3 gap-1 sm:gap-2 text-center">
               <div className="rounded-lg p-2" style={{ background: "rgba(255,255,255,0.02)" }}>
                 <div className="text-[10px] text-gray-500">Rate</div>
                 <div className="text-sm font-bold tabular" style={{ color: paceColor }}>{pace.tweetsPerHour.toFixed(1)}/hr</div>
