@@ -7,6 +7,7 @@ import { setupWebSocket } from './ws/handler.js'
 import { startIndexer } from './indexer/index.js'
 import { startChainWatcher } from './indexer/chain-watcher.js'
 import { startTwitterPollers } from './services/data-sources/twitter.js'
+import { startAutoResolver } from './services/auto-resolver.js'
 import marketsRoutes from './routes/markets.js'
 import activityRoutes from './routes/activity.js'
 import positionsRoutes from './routes/positions.js'
@@ -54,7 +55,8 @@ const server = serve(
 // Attach WebSocket upgrade handler to the underlying Node HTTP server
 setupWebSocket(server as any)
 
-// Start the indexer loop + chain watcher + data source pollers
+// Start the indexer loop + chain watcher + data source pollers + auto-resolver
 startIndexer()
 startChainWatcher()
 startTwitterPollers()
+startAutoResolver()
