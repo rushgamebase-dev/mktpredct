@@ -13,7 +13,7 @@ function computeOdds(totalPerOutcome: string[], totalPool: string): number[] {
   }
   return totalPerOutcome.map((v) => {
     const pct = (BigInt(v) * 10000n) / pool
-    return Number(pct) / 100
+    return Math.round(Number(pct) / 100)
   })
 }
 

@@ -4,15 +4,16 @@ WORKDIR /app
 
 RUN npm install -g pnpm@10.33.0
 
-# Create workspace without next.js lockfile
+# Copy workspace manifests and lockfile so pnpm can resolve deterministically.
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/api/package.json apps/api/
 
-RUN echo '{"name":"rush","private":true}' > package.json
-RUN printf 'packages:\n  - "packages/*"\n  - "apps/*"\n' > pnpm-workspace.yaml
-
-# Install deps (no lockfile = no next.js vulnerability scan)
-RUN pnpm install --no-frozen-lockfile
+# Frozen lockfile prevents silent drift between local and production builds.
+# Scope install to @rush/api + its transitive deps — the web app is built on Vercel.
+RUN pnpm install --frozen-lockfile \
+	--filter @rush/api \
+	--filter @rush/shared
 
 # Copy source
 COPY packages/shared/ packages/shared/

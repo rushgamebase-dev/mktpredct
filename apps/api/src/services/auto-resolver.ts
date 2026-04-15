@@ -1,9 +1,22 @@
 import { eq } from 'drizzle-orm'
 import { markets, counterState } from '@rush/shared/db/schema'
 import { MarketABI } from '@rush/shared'
+import type { WsServerMessage, WsGlobalMessage } from '@rush/shared'
 import { db } from '../db.js'
 import { publicClient, walletClient, ownerAccount } from './chain.js'
 import { signResolve } from './oracle.js'
+import { broadcast } from '../ws/broadcast.js'
+
+function emitExpired(marketAddress: string): void {
+  const msg: WsServerMessage = {
+    type: 'status_change',
+    data: { status: 'expired', winningOutcome: null },
+  }
+  broadcast.emit(marketAddress, msg)
+  const globalMsg: WsGlobalMessage = { ...msg, marketAddress }
+  broadcast.emit('__global', globalMsg)
+  console.log(`[AutoResolver] Broadcast status=expired | market=${marketAddress.slice(0, 10)}...`)
+}
 
 const CHECK_INTERVAL = 30_000 // 30s normal
 const NEAR_DEADLINE_INTERVAL = 5_000 // 5s when close to deadline
@@ -115,6 +128,7 @@ async function checkAndResolve(): Promise<void> {
         if (attempts >= MAX_RESOLVE_ATTEMPTS) {
           console.error(`[AutoResolver] ${addr.slice(0, 10)}... max attempts reached, marking expired`)
           await db.update(markets).set({ status: 'expired' }).where(eq(markets.address, market.address))
+          emitExpired(market.address)
           failedAttempts.delete(market.address)
         }
         continue
@@ -130,8 +144,8 @@ async function checkAndResolve(): Promise<void> {
         })
         console.log(`[AutoResolver] ${addr.slice(0, 10)}... tx sent: ${txHash}`)
 
-        // 8. Wait for receipt
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+        // 8. Wait for receipt (timeout prevents the loop from stalling on a stuck nonce/RPC)
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 120_000 })
 
         if (receipt.status === 'success') {
           console.log(`[AutoResolver] ${addr.slice(0, 10)}... RESOLVED ✓ | outcome=${winningOutcome} (${winningOutcome === 0 ? 'Yes' : 'No'}) | block=${receipt.blockNumber} | tx=${txHash}`)
@@ -162,6 +176,7 @@ async function checkAndResolve(): Promise<void> {
         if (attempts >= MAX_RESOLVE_ATTEMPTS) {
           console.error(`[AutoResolver] ${addr.slice(0, 10)}... max attempts reached, marking expired`)
           await db.update(markets).set({ status: 'expired' }).where(eq(markets.address, market.address))
+          emitExpired(market.address)
           failedAttempts.delete(market.address)
         }
       }
@@ -169,6 +184,18 @@ async function checkAndResolve(): Promise<void> {
   } catch (e: any) {
     console.error('[AutoResolver] Error:', e.message?.slice(0, 100))
   } finally {
+    // Cleanup stale failedAttempts entries for markets no longer open
+    if (failedAttempts.size > 0) {
+      try {
+        const openAddrs = new Set(
+          (await db.select({ address: markets.address }).from(markets).where(eq(markets.status, 'open')))
+            .map((m) => m.address)
+        )
+        for (const addr of failedAttempts.keys()) {
+          if (!openAddrs.has(addr)) failedAttempts.delete(addr)
+        }
+      } catch { /* ignore cleanup errors */ }
+    }
     running = false
   }
 }

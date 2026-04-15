@@ -47,6 +47,15 @@ export default function Header() {
     };
   }, [showConnectors]);
 
+  // Open the connector dropdown when any component in the tree requests it
+  // (e.g. the BetForm's "Connect Wallet to Bet" button).
+  React.useEffect(() => {
+    if (isConnected) return;
+    const open = () => setShowConnectors(true);
+    window.addEventListener("rush:open-connect", open);
+    return () => window.removeEventListener("rush:open-connect", open);
+  }, [isConnected]);
+
   const activeCategory = searchParams.get("category") || "all";
 
   const handleCategoryClick = (slug: string) => {

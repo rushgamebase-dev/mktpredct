@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAccount } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
-import type { WsServerMessage } from "@rush/shared";
+import type { WsBetData, WsServerMessage } from "@rush/shared";
 import { OUTCOME_COLORS } from "@rush/shared";
 import { useMarket } from "@/hooks/useMarket";
 import { useChart } from "@/hooks/useChart";
@@ -36,6 +36,10 @@ export default function MarketDetailPage() {
   const { data: allMarketsData } = useMarkets({ page: 1, pageSize: 20, status: "all" });
   const allMarkets = allMarketsData?.markets ?? [];
 
+  // Last bet received via WS — forwarded to ActivityFeed so the feed doesn't
+  // open a second WS connection for the same market.
+  const [liveBet, setLiveBet] = useState<(WsBetData & { receivedAt: number }) | null>(null);
+
   // ---------------------------------------------------------------------------
   // WebSocket: event-driven, zero invalidateQueries
   // WS = source of truth in real-time, REST = snapshot initial + recovery
@@ -63,6 +67,8 @@ export default function MarketDetailPage() {
         });
       }
       if (msg.type === "bet") {
+        // Forward to ActivityFeed — single WS subscription per market
+        setLiveBet({ ...msg.data, receivedAt: Date.now() });
         // Positions: update locally if it's the current user's bet
         if (userAddress && msg.data.user.toLowerCase() === userAddress.toLowerCase()) {
           queryClient.setQueryData(["positions", address, userAddress], (old: any) => {
@@ -599,6 +605,7 @@ export default function MarketDetailPage() {
           <ActivityFeed
             marketAddress={address}
             labels={market.labels}
+            liveBet={liveBet}
           />
         </div>
       </div>

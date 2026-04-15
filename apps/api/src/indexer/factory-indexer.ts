@@ -17,7 +17,17 @@ export async function syncFactory(currentBlock: bigint): Promise<void> {
     .where(eq(syncState.key, FACTORY_SYNC_KEY))
     .limit(1)
 
-  let fromBlock = existing.length > 0 ? BigInt(existing[0].lastBlock) + 1n : 0n
+  // Fall back to FACTORY_DEPLOY_BLOCK when there's no checkpoint — otherwise
+  // a fresh DB would scan from genesis (36M+ blocks on Base) and burn RPC.
+  const deployBlockFallback = env.FACTORY_DEPLOY_BLOCK != null
+    ? BigInt(env.FACTORY_DEPLOY_BLOCK)
+    : 0n
+  let fromBlock = existing.length > 0
+    ? BigInt(existing[0].lastBlock) + 1n
+    : deployBlockFallback
+  if (existing.length === 0 && deployBlockFallback === 0n) {
+    console.warn('[FactoryIndexer] FACTORY_DEPLOY_BLOCK not set — scanning from block 0. This burns RPC budget; set the env var to the factory deploy block.')
+  }
 
   while (fromBlock <= currentBlock) {
     const toBlock = fromBlock + BATCH_SIZE - 1n > currentBlock

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAccount } from "wagmi";
+import { useAccount, useSignMessage } from "wagmi";
 import type { MarketDetail, CommentsResponse } from "@rush/shared";
 import { apiGet } from "@/lib/api";
 import { formatAddress, timeAgo } from "@/lib/format";
@@ -17,6 +17,7 @@ interface MarketCommentsProps {
 
 export default function MarketComments({ market }: MarketCommentsProps) {
   const { address, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState("");
 
@@ -28,12 +29,14 @@ export default function MarketComments({ market }: MarketCommentsProps) {
 
   const postComment = useMutation({
     mutationFn: async (content: string) => {
+      const message = `Rush Markets comment on ${market.address}:\n${content}`;
+      const signature = await signMessageAsync({ message });
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/markets/${market.address}/comments`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, userAddress: address?.toLowerCase() }),
+          body: JSON.stringify({ content, userAddress: address?.toLowerCase(), signature }),
         },
       );
       if (!res.ok) throw new Error("Failed");

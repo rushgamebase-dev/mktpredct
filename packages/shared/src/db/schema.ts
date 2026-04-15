@@ -61,6 +61,7 @@ export const bets = pgTable(
 		index('idx_bets_market').on(table.marketAddress),
 		index('idx_bets_user').on(table.user),
 		index('idx_bets_market_user').on(table.marketAddress, table.user),
+		index('idx_bets_block_log').on(table.blockNumber, table.logIndex),
 		uniqueIndex('idx_bets_tx_log').on(table.txHash, table.logIndex),
 	],
 )
@@ -102,6 +103,9 @@ export const syncState = pgTable('sync_state', {
 	key: varchar('key', { length: 64 }).primaryKey(),
 	lastBlock: bigint('last_block', { mode: 'number' }).notNull(),
 	lastTimestamp: bigint('last_timestamp', { mode: 'number' }).notNull(),
+	// Hash of lastBlock at the time it was recorded — used for reorg detection.
+	// Nullable: legacy rows before the feature was introduced have no hash.
+	lastBlockHash: varchar('last_block_hash', { length: 66 }),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 

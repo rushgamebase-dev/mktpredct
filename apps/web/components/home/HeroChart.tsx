@@ -19,26 +19,8 @@ function formatRelativeTime(ts: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Smooth / Step line drawing helpers
+// Step line drawing helper — step-chart always (never smooth/bezier)
 // ---------------------------------------------------------------------------
-
-function drawSmoothLine(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) {
-  if (pts.length < 2) return;
-  ctx.moveTo(pts[0].x, pts[0].y);
-  if (pts.length === 2) { ctx.lineTo(pts[1].x, pts[1].y); return; }
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(0, i - 1)];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[Math.min(pts.length - 1, i + 2)];
-    const t = 0.3;
-    ctx.bezierCurveTo(
-      p1.x + (p2.x - p0.x) * t, p1.y + (p2.y - p0.y) * t,
-      p2.x - (p3.x - p1.x) * t, p2.y - (p3.y - p1.y) * t,
-      p2.x, p2.y,
-    );
-  }
-}
 
 function drawStepLine(ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) {
   if (pts.length < 2) return;
@@ -286,11 +268,7 @@ export default function HeroChart({
         screenPts.push({ x: getX(line.points[i].time), y: scaleY(line.points[i].value) });
       }
 
-      if (isBinary) {
-        drawStepLine(ctx, screenPts);
-      } else {
-        drawStepLine(ctx, screenPts);
-      }
+      drawStepLine(ctx, screenPts);
       ctx.stroke();
 
       // Endpoint dot (simple, no glow)

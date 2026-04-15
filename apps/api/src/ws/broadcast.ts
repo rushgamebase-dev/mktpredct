@@ -18,4 +18,4 @@ class MarketBroadcast extends EventEmitter {
 }
 
 export const broadcast = new MarketBroadcast()
-broadcast.setMaxListeners(0)
+broadcast.setMaxListeners(5000) // reasonable limit — log warning if exceeded

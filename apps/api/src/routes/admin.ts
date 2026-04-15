@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { parseEventLogs } from 'viem'
+import { isAddress, parseEventLogs } from 'viem'
 import { eq } from 'drizzle-orm'
 import { MarketFactoryABI, MarketABI } from '@rush/shared'
 import type { CreateMarketRequest, CreateMarketResponse, ResolveMarketRequest, TxResponse } from '@rush/shared'
@@ -9,6 +9,8 @@ import { signResolve, signCancel } from '../services/oracle.js'
 import { env } from '../env.js'
 import { db } from '../db.js'
 import { markets } from '@rush/shared/db/schema'
+
+const VALID_MARKET_TYPES = new Set(['classic', 'counter', 'price', 'event'])
 
 const app = new Hono()
 
@@ -26,6 +28,10 @@ app.post('/markets', async (c) => {
     return c.json({ error: 'At least 2 labels required' }, 400)
   }
 
+  if (body.marketType && !VALID_MARKET_TYPES.has(body.marketType)) {
+    return c.json({ error: `Invalid marketType. Must be one of: ${[...VALID_MARKET_TYPES].join(', ')}` }, 400)
+  }
+
   const factoryAddress = env.FACTORY_ADDRESS as `0x${string}`
 
   const txHash = await walletClient.writeContract({
@@ -40,7 +46,7 @@ app.post('/markets', async (c) => {
     ],
   })
 
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 120_000 })
 
   const parsed = parseEventLogs({
     abi: MarketFactoryABI,
@@ -79,11 +85,18 @@ app.post('/markets', async (c) => {
 
 // POST /api/admin/markets/:address/resolve
 app.post('/markets/:address/resolve', async (c) => {
-  const address = c.req.param('address').toLowerCase() as `0x${string}`
+  const rawAddress = c.req.param('address').toLowerCase()
+  if (!isAddress(rawAddress)) {
+    return c.json({ error: 'Invalid market address' }, 400)
+  }
+  const address = rawAddress as `0x${string}`
   const body = await c.req.json<ResolveMarketRequest>()
 
   if (body.winningOutcome === undefined || body.winningOutcome === null) {
     return c.json({ error: 'Missing required field: winningOutcome' }, 400)
+  }
+  if (!Number.isInteger(body.winningOutcome) || body.winningOutcome < 0 || body.winningOutcome > 9) {
+    return c.json({ error: 'winningOutcome must be an integer in [0, 9]' }, 400)
   }
 
   const signature = await signResolve(address, body.winningOutcome)
@@ -95,7 +108,10 @@ app.post('/markets/:address/resolve', async (c) => {
     args: [BigInt(body.winningOutcome), signature],
   })
 
-  await publicClient.waitForTransactionReceipt({ hash: txHash })
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 120_000 })
+  if (receipt.status === 'reverted') {
+    return c.json({ error: 'Transaction reverted on-chain', txHash }, 422)
+  }
 
   const response: TxResponse = { txHash }
   return c.json(response)
@@ -103,7 +119,11 @@ app.post('/markets/:address/resolve', async (c) => {
 
 // POST /api/admin/markets/:address/cancel
 app.post('/markets/:address/cancel', async (c) => {
-  const address = c.req.param('address').toLowerCase() as `0x${string}`
+  const rawAddress = c.req.param('address').toLowerCase()
+  if (!isAddress(rawAddress)) {
+    return c.json({ error: 'Invalid market address' }, 400)
+  }
+  const address = rawAddress as `0x${string}`
 
   const signature = await signCancel(address)
 
@@ -114,7 +134,10 @@ app.post('/markets/:address/cancel', async (c) => {
     args: [signature],
   })
 
-  await publicClient.waitForTransactionReceipt({ hash: txHash })
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 120_000 })
+  if (receipt.status === 'reverted') {
+    return c.json({ error: 'Transaction reverted on-chain', txHash }, 422)
+  }
 
   const response: TxResponse = { txHash }
   return c.json(response)

@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import { serve } from '@hono/node-server'
 import { env } from './env.js'
 import { errorHandler } from './middleware/error.js'
+import { rateLimit } from './middleware/rate-limit.js'
 import { setupWebSocket } from './ws/handler.js'
 import { startIndexer } from './indexer/index.js'
 import { startChainWatcher } from './indexer/chain-watcher.js'
@@ -22,8 +23,16 @@ import newsRoutes from './routes/news.js'
 
 const app = new Hono()
 
-app.use('/*', cors())
+app.use('/*', cors({
+	origin: process.env.FRONTEND_URL || 'https://markets.rushgame.vip',
+	allowMethods: ['GET', 'POST', 'OPTIONS'],
+	allowHeaders: ['Content-Type', 'x-api-key'],
+	maxAge: 86400,
+}))
 app.onError(errorHandler)
+
+// Rate limit: 60 requests/min burst, 2/sec sustained
+app.use('/api/*', rateLimit(60, 2))
 
 // Health check
 app.get('/health', (c) => c.json({ status: 'ok' }))

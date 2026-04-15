@@ -37,7 +37,7 @@ export default function CounterMarketPage() {
   const [prevCount, setPrevCount] = useState(0);
   const [newTweetFlash, setNewTweetFlash] = useState(false);
   const [plusOneVisible, setPlusOneVisible] = useState(false);
-  const [startTime] = useState(Date.now());
+
   const feedRef = useRef<HTMLDivElement>(null);
   const [history, setHistory] = useState<{ date: string; count: number; hit: boolean }[]>([]);
   const [streak, setStreak] = useState(0);
@@ -65,13 +65,18 @@ export default function CounterMarketPage() {
   };
   const avatarSrc = avatarMap[twitterTarget] ?? '/logo.png';
 
-  // Pace & projection
+  // Pace & projection — uses market deadline to derive period start (24h window)
+  const marketDeadlineForPace = marketData?.deadline ?? 0;
   const pace = useMemo(() => {
-    const elapsed = (Date.now() - startTime) / 1000 / 60; // minutes since page load
-    const hoursPassed = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
-    const effectiveHours = Math.max(0.5, hoursPassed);
+    // Period start = deadline - 24h. Elapsed = now - periodStart.
+    const periodStartMs = marketDeadlineForPace > 0
+      ? (marketDeadlineForPace - 86400) * 1000
+      : Date.now() - 86400_000; // fallback: assume started 24h ago
+    const elapsedMs = Math.max(Date.now() - periodStartMs, 1800_000); // min 30 min to avoid divide-by-tiny
+    const effectiveHours = elapsedMs / 3_600_000;
     const tweetsPerHour = activeCount / effectiveHours;
-    const projected = Math.round(tweetsPerHour * 24);
+    const totalHoursInPeriod = 24;
+    const projected = Math.round(tweetsPerHour * totalHoursInPeriod);
     const remaining = threshold - activeCount;
     const hoursRemaining = hoursLeft;
     const neededPerHour = remaining > 0 && hoursRemaining > 0 ? remaining / hoursRemaining : 0;
@@ -82,7 +87,7 @@ export default function CounterMarketPage() {
     else if (projected >= threshold * 0.8) status = "on_track";
 
     return { tweetsPerHour, projected, remaining, neededPerHour, status };
-  }, [activeCount, hoursLeft, startTime, threshold]);
+  }, [activeCount, hoursLeft, marketDeadlineForPace, threshold]);
 
   // Fetch
   const fetchTweets = useCallback(async () => {
@@ -146,12 +151,13 @@ export default function CounterMarketPage() {
       setTodayCount(d.currentCount);
       setLast24hCount(d.currentCount);
       setLastUpdate(new Date().toLocaleTimeString());
-      // Fetch full tweet text on new tweets (WS doesn't include tweet text)
-      if (d.delta > 0) fetchTweets();
+      // Tweet text is enriched on reconnect only — WS is source of truth, no
+      // REST refetch per event (feedback_ws_source_of_truth).
     }
-  }, [activeCount, fetchTweets]);
+  }, [activeCount]);
 
-  useMarketFeed(MARKET_ADDR, handleWsMessage);
+  // Refetch tweet feed only on reconnect (the only case where REST-after-WS is allowed).
+  useMarketFeed(MARKET_ADDR, handleWsMessage, fetchTweets);
 
   // Countdown — uses market deadline, not midnight
   const marketDeadline = marketData?.deadline ?? 0;
@@ -168,7 +174,7 @@ export default function CounterMarketPage() {
     tick();
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
-  }, []);
+  }, [marketDeadline]);
 
   // Dynamic odds
   const dynamicYes = activeCount >= threshold ? 95 : Math.min(92, 25 + (pace.projected / threshold) * 50);

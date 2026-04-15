@@ -16,7 +16,7 @@ function computeOdds(totalPerOutcome: string[], totalPool: string): number[] {
   }
   return totalPerOutcome.map((v) => {
     const pct = (BigInt(v) * 10000n) / pool
-    return Number(pct) / 100
+    return Math.round(Number(pct) / 100)
   })
 }
 
@@ -47,15 +47,6 @@ export async function processMarketEvent(
       const amount = args.amount.toString()
       const userAddr = args.user.toLowerCase()
 
-      // Compute new pool state
-      const currentTotalPool = BigInt(market.totalPool) + BigInt(amount)
-      const currentTotalPerOutcome = market.totalPerOutcome.map((v) => BigInt(v))
-      currentTotalPerOutcome[outcomeIdx] += BigInt(amount)
-
-      const totalPerOutcomeStrings = currentTotalPerOutcome.map((v) => v.toString())
-      const poolStr = currentTotalPool.toString()
-      const odds = computeOdds(totalPerOutcomeStrings, poolStr)
-
       // DB writes FIRST — so REST queries after WS event find the data
       await db
         .insert(bets)
@@ -71,13 +62,32 @@ export async function processMarketEvent(
         })
         .onConflictDoNothing()
 
+      // Fully atomic update — the array is rebuilt in SQL from the current
+      // column value, so two concurrent BetPlaced events on the same market
+      // cannot clobber each other's totalPerOutcome slot.
       await db
         .update(markets)
         .set({
-          totalPool: poolStr,
-          totalPerOutcome: totalPerOutcomeStrings,
+          totalPool: sql`CAST(CAST(${markets.totalPool} AS NUMERIC) + ${amount} AS TEXT)`,
+          totalPerOutcome: sql`(
+            SELECT array_agg(
+              CASE WHEN ord - 1 = ${outcomeIdx}
+                THEN CAST(CAST(elem AS NUMERIC) + CAST(${amount} AS NUMERIC) AS TEXT)
+                ELSE elem
+              END
+              ORDER BY ord
+            )
+            FROM unnest(${markets.totalPerOutcome}) WITH ORDINALITY AS t(elem, ord)
+          )`,
         })
         .where(eq(markets.address, market.address))
+
+      // Re-read canonical state for accurate odds broadcast
+      const [updatedMarket] = await db.select().from(markets)
+        .where(eq(markets.address, market.address)).limit(1)
+      const poolStr = updatedMarket?.totalPool ?? market.totalPool
+      const totalPerOutcomeStrings = updatedMarket?.totalPerOutcome ?? market.totalPerOutcome
+      const odds = computeOdds(totalPerOutcomeStrings, poolStr)
 
       // BROADCAST after DB writes — prevents stale REST reads
       const betMsg: WsServerMessage = {
@@ -155,6 +165,16 @@ export async function processMarketEvent(
     }
 
     case 'MarketResolved': {
+      // DB writes FIRST — so REST queries after WS event find the data
+      await db
+        .update(markets)
+        .set({
+          status: 'resolved',
+          winningOutcome: Number(args.winningOutcome),
+          resolvedAt: timestamp,
+        })
+        .where(eq(markets.address, market.address))
+
       const statusMsg: WsServerMessage = {
         type: 'status_change',
         data: {
@@ -165,19 +185,15 @@ export async function processMarketEvent(
       broadcast.emit(market.address, statusMsg)
       emitGlobal(statusMsg, market.address)
 
-      await db
-        .update(markets)
-        .set({
-          status: 'resolved',
-          winningOutcome: Number(args.winningOutcome),
-          resolvedAt: timestamp,
-        })
-        .where(eq(markets.address, market.address))
-
       break
     }
 
     case 'MarketCancelled': {
+      await db
+        .update(markets)
+        .set({ status: 'cancelled' })
+        .where(eq(markets.address, market.address))
+
       const cancelMsg: WsServerMessage = {
         type: 'status_change',
         data: { status: 'cancelled', winningOutcome: null },
@@ -185,15 +201,15 @@ export async function processMarketEvent(
       broadcast.emit(market.address, cancelMsg)
       emitGlobal(cancelMsg, market.address)
 
-      await db
-        .update(markets)
-        .set({ status: 'cancelled' })
-        .where(eq(markets.address, market.address))
-
       break
     }
 
     case 'MarketExpired': {
+      await db
+        .update(markets)
+        .set({ status: 'expired' })
+        .where(eq(markets.address, market.address))
+
       const expireMsg: WsServerMessage = {
         type: 'status_change',
         data: { status: 'expired', winningOutcome: null },
@@ -201,25 +217,10 @@ export async function processMarketEvent(
       broadcast.emit(market.address, expireMsg)
       emitGlobal(expireMsg, market.address)
 
-      await db
-        .update(markets)
-        .set({ status: 'expired' })
-        .where(eq(markets.address, market.address))
-
       break
     }
 
     case 'Claimed': {
-      const claimMsg: WsServerMessage = {
-        type: 'claim',
-        data: {
-          user: args.user.toLowerCase(),
-          payout: args.payout.toString(),
-        },
-      }
-      broadcast.emit(market.address, claimMsg)
-      emitGlobal(claimMsg, market.address)
-
       await db
         .insert(claims)
         .values({
@@ -232,6 +233,16 @@ export async function processMarketEvent(
           timestamp,
         })
         .onConflictDoNothing()
+
+      const claimMsg: WsServerMessage = {
+        type: 'claim',
+        data: {
+          user: args.user.toLowerCase(),
+          payout: args.payout.toString(),
+        },
+      }
+      broadcast.emit(market.address, claimMsg)
+      emitGlobal(claimMsg, market.address)
 
       // User stats: win/pnl
       try {
@@ -290,9 +301,10 @@ export async function processMarketEvent(
 // ---------------------------------------------------------------------------
 
 export async function syncMarkets(currentBlock: bigint): Promise<void> {
-  const allMarkets = await db.select().from(markets)
+  // Only sync open markets — resolved/cancelled/expired don't receive new events
+  const openMarkets = await db.select().from(markets).where(eq(markets.status, 'open'))
 
-  for (const market of allMarkets) {
+  for (const market of openMarkets) {
     await syncSingleMarket(market, currentBlock)
   }
 }
@@ -333,7 +345,14 @@ async function syncSingleMarket(
       toBlock,
     })
 
-    for (const log of allLogs) {
+    // Sort logs by (blockNumber, transactionIndex, logIndex) to guarantee order
+    const sortedLogs = [...allLogs].sort((a, b) => {
+      if (a.blockNumber !== b.blockNumber) return Number(a.blockNumber! - b.blockNumber!)
+      if (a.transactionIndex !== b.transactionIndex) return a.transactionIndex! - b.transactionIndex!
+      return a.logIndex! - b.logIndex!
+    })
+
+    for (const log of sortedLogs) {
       const timestamp = await getBlockTimestamp(log.blockNumber!)
 
       // Re-read market state for each event (pool may have changed)

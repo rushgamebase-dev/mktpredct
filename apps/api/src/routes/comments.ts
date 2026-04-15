@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { eq, desc } from 'drizzle-orm'
+import { verifyMessage } from 'viem'
 import { comments } from '@rush/shared/db/schema'
 import type { CommentsResponse, Comment } from '@rush/shared'
 import { db } from '../db.js'
@@ -39,7 +40,7 @@ app.get('/:address/comments', async (c) => {
 app.post('/:address/comments', async (c) => {
   try {
     const address = c.req.param('address').toLowerCase()
-    const body = await c.req.json<{ content: string; userAddress: string }>()
+    const body = await c.req.json<{ content: string; userAddress: string; signature: string }>()
 
     if (!body.content || body.content.length < 1 || body.content.length > 500) {
       return c.json({ error: 'Content must be between 1 and 500 characters' }, 400)
@@ -47,6 +48,25 @@ app.post('/:address/comments', async (c) => {
 
     if (!body.userAddress) {
       return c.json({ error: 'userAddress is required' }, 400)
+    }
+
+    if (!body.signature) {
+      return c.json({ error: 'signature is required' }, 400)
+    }
+
+    // Verify the user signed this comment (EIP-191 personal_sign)
+    const message = `Rush Markets comment on ${address}:\n${body.content}`
+    try {
+      const valid = await verifyMessage({
+        address: body.userAddress as `0x${string}`,
+        message,
+        signature: body.signature as `0x${string}`,
+      })
+      if (!valid) {
+        return c.json({ error: 'Invalid signature' }, 401)
+      }
+    } catch {
+      return c.json({ error: 'Invalid signature' }, 401)
     }
 
     const now = Math.floor(Date.now() / 1000)

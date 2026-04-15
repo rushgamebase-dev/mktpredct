@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { BetEvent, WsServerMessage } from "@rush/shared";
+import type { BetEvent, WsBetData } from "@rush/shared";
 import { OUTCOME_COLORS } from "@rush/shared";
 import { useActivity } from "@/hooks/useActivity";
-import { useMarketFeed } from "@/hooks/useMarketFeed";
 import { formatEth, formatAddress, timeAgo } from "@/lib/format";
 import { Activity, Pause, Play, ArrowUpRight, Zap } from "lucide-react";
 
@@ -17,6 +16,9 @@ const LARGE_BET_WEI = BigInt("100000000000000000");
 interface ActivityFeedProps {
   marketAddress: string;
   labels: string[];
+  // Live bet delivered from the parent's WS subscription. The parent owns the
+  // WS connection, so this component never opens its own (one WS per market).
+  liveBet?: (WsBetData & { receivedAt: number }) | null;
 }
 
 interface FeedItem {
@@ -28,7 +30,7 @@ interface FeedItem {
   isNew?: boolean;
 }
 
-export default function ActivityFeed({ marketAddress, labels }: ActivityFeedProps) {
+export default function ActivityFeed({ marketAddress, labels, liveBet }: ActivityFeedProps) {
   const { data: activity } = useActivity(marketAddress);
   const [liveBets, setLiveBets] = useState<FeedItem[]>([]);
   const [isPaused, setIsPaused] = useState(false);
@@ -36,35 +38,29 @@ export default function ActivityFeed({ marketAddress, labels }: ActivityFeedProp
   const [newBetCount, setNewBetCount] = useState(0);
   const [isAutoScroll, setIsAutoScroll] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
-  // Buffer for bets that arrive while paused
   const pauseBufferRef = useRef<FeedItem[]>([]);
+  const lastSeenRef = useRef<number>(0);
 
-  // WebSocket handler for real-time updates
-  const handleWsMessage = useCallback((msg: WsServerMessage) => {
-    if (msg.type === "bet") {
-      const newItem: FeedItem = {
-        id: `ws-${msg.data.txHash}-${Date.now()}`,
-        user: msg.data.user,
-        outcomeIndex: msg.data.outcomeIndex,
-        amount: msg.data.amount,
-        timestamp: msg.data.timestamp,
-        isNew: true,
-      };
-
-      if (isPaused) {
-        pauseBufferRef.current = [newItem, ...pauseBufferRef.current].slice(0, 50);
-      } else {
-        setLiveBets((prev) => [newItem, ...prev].slice(0, 50));
-      }
-
-      // Track new bets when scrolled down
-      if (!isAutoScroll) {
-        setNewBetCount((prev) => prev + 1);
-      }
+  useEffect(() => {
+    if (!liveBet || liveBet.receivedAt === lastSeenRef.current) return;
+    lastSeenRef.current = liveBet.receivedAt;
+    const newItem: FeedItem = {
+      id: `ws-${liveBet.txHash}-${liveBet.receivedAt}`,
+      user: liveBet.user,
+      outcomeIndex: liveBet.outcomeIndex,
+      amount: liveBet.amount,
+      timestamp: liveBet.timestamp,
+      isNew: true,
+    };
+    if (isPaused) {
+      pauseBufferRef.current = [newItem, ...pauseBufferRef.current].slice(0, 50);
+    } else {
+      setLiveBets((prev) => [newItem, ...prev].slice(0, 50));
     }
-  }, [isPaused, isAutoScroll]);
-
-  useMarketFeed(marketAddress, handleWsMessage);
+    if (!isAutoScroll) {
+      setNewBetCount((prev) => prev + 1);
+    }
+  }, [liveBet, isPaused, isAutoScroll]);
 
   // Handle pause/resume
   const togglePause = () => {
