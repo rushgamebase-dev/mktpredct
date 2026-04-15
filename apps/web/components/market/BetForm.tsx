@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { useAccount, useBalance, useChainId, useSwitchChain } from "wagmi";
+import { useAccount, useBalance, useSwitchChain } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatEther, parseEther } from "viem";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,8 +33,8 @@ export default function BetForm({
   totalPool,
   totalPerOutcome,
 }: BetFormProps) {
-  const { address: walletAddress, isConnected } = useAccount();
-  const chainId = useChainId();
+  const { address: walletAddress, isConnected, chain } = useAccount();
+  const chainId = chain?.id;
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const { data: balance } = useBalance({ address: walletAddress });
   const queryClient = useQueryClient();
@@ -57,7 +57,7 @@ export default function BetForm({
   const pendingBetRef = useRef<{ amount: string; outcomeIndex: number } | null>(null);
 
   const isOpen = status === "open";
-  const onWrongNetwork = isConnected && chainId !== base.id;
+  const onWrongNetwork = isConnected && chainId != null && chainId !== base.id;
 
   // Optimistic update when tx is submitted (hash received, before on-chain confirm)
   useEffect(() => {
@@ -110,11 +110,15 @@ export default function BetForm({
     !aboveBalance &&
     !onWrongNetwork;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
     pendingBetRef.current = { amount, outcomeIndex: selectedOutcome };
-    placeBet(selectedOutcome, amount);
+    try {
+      await placeBet(selectedOutcome, amount);
+    } catch (err) {
+      console.error("[BET_UI] submit_error", err);
+    }
   };
 
   const handleReset = () => {

@@ -133,7 +133,13 @@ export default function PositionsPanel({
                 key="claim-btn"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                onClick={() => claim()}
+                onClick={async () => {
+                  try {
+                    await claim();
+                  } catch (err) {
+                    console.error("[CLAIM_UI] submit_error", err);
+                  }
+                }}
                 disabled={claimPending}
                 className="btn-primary flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs"
               >

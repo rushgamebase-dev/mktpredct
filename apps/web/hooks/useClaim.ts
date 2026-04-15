@@ -3,7 +3,6 @@
 import { useCallback, useState } from "react";
 import {
   useAccount,
-  useChainId,
   usePublicClient,
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -14,8 +13,8 @@ import { base } from "@/lib/wagmi";
 
 export function useClaim(marketAddress: string) {
   const publicClient = usePublicClient();
-  const { address: userAddress } = useAccount();
-  const chainId = useChainId();
+  const { address: userAddress, chain } = useAccount();
+  const chainId = chain?.id;
 
   const [simulateError, setSimulateError] = useState<Error | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -39,6 +38,10 @@ export function useClaim(marketAddress: string) {
 
     if (!isAddress(marketAddress)) {
       setSimulateError(new Error("Invalid market address"));
+      return;
+    }
+    if (chainId == null) {
+      setSimulateError(new Error("Wallet chain not detected — reconnect wallet"));
       return;
     }
     if (chainId !== base.id) {

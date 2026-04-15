@@ -4,8 +4,21 @@ import { verifyMessage } from 'viem'
 import { comments } from '@rush/shared/db/schema'
 import type { CommentsResponse, Comment } from '@rush/shared'
 import { db } from '../db.js'
+import { rateLimitByKey } from '../middleware/rate-limit.js'
 
 const app = new Hono()
+
+// Per-wallet rate limit: 5 comments per minute, regardless of IP. Pairs with
+// the global per-IP limiter so a bot rotating IPs can't spam a single wallet's
+// comments into any market.
+const perUserLimit = rateLimitByKey(5, 5 / 60, async (c) => {
+	try {
+		const body = await c.req.json<{ userAddress?: string }>()
+		return body.userAddress ?? null
+	} catch {
+		return null
+	}
+})
 
 // GET /api/markets/:address/comments
 app.get('/:address/comments', async (c) => {
@@ -37,7 +50,7 @@ app.get('/:address/comments', async (c) => {
 })
 
 // POST /api/markets/:address/comments
-app.post('/:address/comments', async (c) => {
+app.post('/:address/comments', perUserLimit, async (c) => {
   try {
     const address = c.req.param('address').toLowerCase()
     const body = await c.req.json<{ content: string; userAddress: string; signature: string }>()

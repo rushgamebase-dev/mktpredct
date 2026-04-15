@@ -89,7 +89,8 @@ export default function MarketDetailPage() {
             };
           });
         }
-        // Activity feed is updated live via its own WS handler (ActivityFeed.tsx)
+        // Activity feed receives this bet via the `liveBet` prop — it no longer
+        // opens its own WS subscription (single WS per market).
       }
       if (msg.type === "status_change") {
         // Market state: direct update

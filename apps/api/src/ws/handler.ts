@@ -4,19 +4,11 @@ import { WebSocketServer, WebSocket } from 'ws'
 import { desc, eq } from 'drizzle-orm'
 import { bets, markets, syncState } from '@rush/shared/db/schema'
 import type { WsBetData, WsGlobalMessage, WsServerMessage, WsSnapshotData } from '@rush/shared'
+import { computeOdds } from '@rush/shared'
 import { db } from '../db.js'
 import { broadcast } from './broadcast.js'
 
 const HEARTBEAT_INTERVAL = 30_000 // 30s — ping interval
-
-function computeOdds(totalPerOutcome: string[], totalPool: string): number[] {
-	const pool = BigInt(totalPool)
-	if (pool === 0n) return totalPerOutcome.map(() => 0)
-	return totalPerOutcome.map((v) => {
-		const pct = (BigInt(v) * 10000n) / pool
-		return Math.round(Number(pct) / 100)
-	})
-}
 
 async function buildSnapshot(marketAddress: string): Promise<WsSnapshotData | null> {
 	const [marketRow] = await db
@@ -118,12 +110,30 @@ export function setupWebSocket(server: HttpServer): void {
 		if (!isGlobal && channel.startsWith('0x') && channel.length === 42) {
 			buildSnapshot(channel)
 				.then((snapshot) => {
-					if (snapshot && ws.readyState === WebSocket.OPEN) {
+					if (ws.readyState !== WebSocket.OPEN) return
+					if (snapshot) {
 						ws.send(JSON.stringify({ type: 'snapshot', data: snapshot } satisfies WsServerMessage))
+					} else {
+						// Market not found — tell the client explicitly so it can show an
+						// error state instead of waiting forever for a snapshot.
+						ws.send(
+							JSON.stringify({
+								type: 'error',
+								data: { message: 'Market not found' },
+							} satisfies WsServerMessage),
+						)
 					}
 				})
 				.catch((e) => {
 					console.warn(`[WS] Snapshot failed for ${channel.slice(0, 10)}...: ${e?.message?.slice(0, 100)}`)
+					if (ws.readyState === WebSocket.OPEN) {
+						ws.send(
+							JSON.stringify({
+								type: 'error',
+								data: { message: 'Snapshot failed' },
+							} satisfies WsServerMessage),
+						)
+					}
 				})
 		}
 

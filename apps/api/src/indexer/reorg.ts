@@ -37,9 +37,16 @@ export async function checkForReorg(): Promise<void> {
 	if (!stored?.lastBlockHash) return
 	const storedBlock = BigInt(stored.lastBlock)
 
-	let currentHash: string | null
+	let currentHash: string
 	try {
 		const block = await publicClient.getBlock({ blockNumber: storedBlock })
+		// Refuse to act on a null hash — some RPCs occasionally return null
+		// for blocks still propagating. Treating null !== stored as a reorg
+		// would trigger a destructive rollback on transient RPC weirdness.
+		if (!block.hash) {
+			console.warn(`[Reorg] Block ${storedBlock} returned null hash — skipping check`)
+			return
+		}
 		currentHash = block.hash
 	} catch (e) {
 		console.warn(`[Reorg] Fetch block ${storedBlock} failed: ${errMsg(e)}`)

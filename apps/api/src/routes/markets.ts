@@ -2,20 +2,10 @@ import { Hono } from 'hono'
 import { eq, sql, count } from 'drizzle-orm'
 import { markets } from '@rush/shared/db/schema'
 import type { MarketSummary, MarketDetail, MarketsListResponse, MarketDetailResponse } from '@rush/shared'
+import { computeOdds } from '@rush/shared'
 import { db } from '../db.js'
 
 const app = new Hono()
-
-function computeOdds(totalPerOutcome: string[], totalPool: string): number[] {
-  const pool = BigInt(totalPool)
-  if (pool === 0n) {
-    return totalPerOutcome.map(() => 0)
-  }
-  return totalPerOutcome.map((v) => {
-    const pct = (BigInt(v) * 10000n) / pool
-    return Math.round(Number(pct) / 100)
-  })
-}
 
 function toMarketSummary(row: typeof markets.$inferSelect): MarketSummary {
   return {

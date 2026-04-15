@@ -1,6 +1,6 @@
 import { eq, sql, and } from 'drizzle-orm'
 import { markets, bets, claims, fees, syncState, marketStats, userStats } from '@rush/shared/db/schema'
-import { MarketABI } from '@rush/shared'
+import { MarketABI, computeOdds } from '@rush/shared'
 import type { WsServerMessage, WsGlobalMessage } from '@rush/shared'
 import { db } from '../db.js'
 import { publicClient } from '../services/chain.js'
@@ -8,17 +8,6 @@ import { broadcast } from '../ws/broadcast.js'
 import { getBlockTimestamp } from './block-cache.js'
 
 const BATCH_SIZE = 2000n // Chainstack Growth: archive enabled, unlimited range
-
-function computeOdds(totalPerOutcome: string[], totalPool: string): number[] {
-  const pool = BigInt(totalPool)
-  if (pool === 0n) {
-    return totalPerOutcome.map(() => 0)
-  }
-  return totalPerOutcome.map((v) => {
-    const pct = (BigInt(v) * 10000n) / pool
-    return Math.round(Number(pct) / 100)
-  })
-}
 
 // ---------------------------------------------------------------------------
 // processMarketEvent — shared by polling indexer + chain watcher
