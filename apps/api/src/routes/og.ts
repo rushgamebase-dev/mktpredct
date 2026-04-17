@@ -8,14 +8,16 @@ import { db } from '../db.js'
 
 const app = new Hono()
 
-// Font cache — loaded once, reused for all requests
+// Font cache — loaded once on first OG request, reused for all subsequent
 let fontDataCache: ArrayBuffer | null = null
 async function getFont(): Promise<ArrayBuffer> {
 	if (fontDataCache) return fontDataCache
-	// Inter Bold from Google Fonts (open source, SIL OFL license)
+	// Inter Bold (OTF) from GitHub — reliable, no user-agent restrictions
 	const res = await fetch(
-		'https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKv0o.woff2',
+		'https://github.com/rsms/inter/raw/master/fonts/inter/Inter-Bold.otf',
+		{ headers: { 'User-Agent': 'RushMarkets-OG/1.0' } },
 	)
+	if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`)
 	fontDataCache = await res.arrayBuffer()
 	return fontDataCache
 }
