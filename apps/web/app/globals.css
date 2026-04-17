@@ -642,6 +642,22 @@ body {
   pointer-events: none;
 }
 
+/* ===== Odds pulse — subtle breathing on idle ===== */
+.odds-pulse-green {
+  animation: oddsPulseGreen 3s ease-in-out infinite;
+}
+.odds-pulse-red {
+  animation: oddsPulseRed 3s ease-in-out infinite;
+}
+@keyframes oddsPulseGreen {
+  0%, 100% { text-shadow: 0 0 30px rgba(0,255,136,0.3); }
+  50% { text-shadow: 0 0 40px rgba(0,255,136,0.45), 0 0 80px rgba(0,255,136,0.1); }
+}
+@keyframes oddsPulseRed {
+  0%, 100% { text-shadow: 0 0 30px rgba(239,68,68,0.3); }
+  50% { text-shadow: 0 0 40px rgba(239,68,68,0.45), 0 0 80px rgba(239,68,68,0.1); }
+}
+
 /* ===== Odds split: vertical divider ===== */
 .odds-vs-divider {
   width: 1px;

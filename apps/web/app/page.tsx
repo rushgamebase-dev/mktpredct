@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useRef, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMarkets } from "@/hooks/useMarkets";
 import { useGlobalFeed } from "@/hooks/useGlobalFeed";
 import HeroMarket from "@/components/home/HeroMarket";
+import SocialProofBar from "@/components/home/SocialProofBar";
 import LiveActivityFeed from "@/components/home/LiveActivityFeed";
 import MarketFeedCard from "@/components/home/MarketFeedCard";
 import { MarketFeedCardSkeletonGrid } from "@/components/market/MarketCardSkeleton";
@@ -58,6 +59,10 @@ export default function HomePage() {
   // Last WS bet event (passed to HeroMarket + LiveActivityFeed)
   const [lastWsBet, setLastWsBet] = useState<WsGlobalMessage | null>(null);
 
+  // Track recent bet count (bets in last 60s from WS)
+  const recentBetTimesRef = useRef<number[]>([]);
+  const [recentBetCount, setRecentBetCount] = useState(0);
+
   const queryParams: MarketsListQuery = {
     page,
     pageSize: 20,
@@ -77,6 +82,10 @@ export default function HomePage() {
     switch (msg.type) {
       case "bet":
         setLastWsBet(msg);
+        // Track bets-per-minute for social proof
+        recentBetTimesRef.current.push(Date.now());
+        recentBetTimesRef.current = recentBetTimesRef.current.filter((t) => Date.now() - t < 60_000);
+        setRecentBetCount(recentBetTimesRef.current.length);
         break;
       case "odds_update":
         queryClient.setQueryData(["markets", page, 20, status === "all" ? "all" : status], (old: any) => {
@@ -178,11 +187,18 @@ export default function HomePage() {
         className="mb-5"
       >
         {heroMarket ? (
-          <HeroMarket market={heroMarket} lastWsBet={lastWsBet} />
+          <HeroMarket market={heroMarket} lastWsBet={lastWsBet} recentBetCount={recentBetCount} />
         ) : isLoading ? (
           <div className="skeleton h-[280px] sm:h-[320px] rounded-2xl" />
         ) : null}
       </motion.div>
+
+      {/* ---- Social Proof Bar ---- */}
+      {markets.length > 0 && (
+        <div className="mb-4">
+          <SocialProofBar markets={markets} recentBetCount={recentBetCount} />
+        </div>
+      )}
 
       {/* ---- Section 2: LIVE ACTIVITY FEED ---- */}
       <motion.div

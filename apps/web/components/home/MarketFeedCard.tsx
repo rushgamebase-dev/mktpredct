@@ -45,6 +45,8 @@ export default function MarketFeedCard({ market, index }: MarketFeedCardProps) {
     try { return BigInt(market.totalPool) >= HOT_THRESHOLD; } catch { return false; }
   }, [market.totalPool]);
   const isEnding = remaining > 0 && remaining < 3600 && isOpen;
+  const isUnderdog = isBinary && (yesOdds < 25 || noOdds < 25);
+  const isMomentumShift = isBinary && Math.abs(yesOdds - noOdds) < 12;
 
   const deadlineText = useMemo(() => {
     if (remaining <= 0) return "Ended";
@@ -90,6 +92,22 @@ export default function MarketFeedCard({ market, index }: MarketFeedCardProps) {
               style={{ background: "rgba(255,200,40,0.1)", color: "#ffc828", border: "1px solid rgba(255,200,40,0.2)" }}
             >
               Hot
+            </span>
+          )}
+          {isMomentumShift && !isHot && (
+            <span
+              className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase"
+              style={{ background: "rgba(59,130,246,0.1)", color: "#3B82F6", border: "1px solid rgba(59,130,246,0.2)" }}
+            >
+              Split
+            </span>
+          )}
+          {isUnderdog && !isMomentumShift && !isHot && (
+            <span
+              className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase"
+              style={{ background: "rgba(249,115,22,0.1)", color: "#F97316", border: "1px solid rgba(249,115,22,0.2)" }}
+            >
+              Underdog
             </span>
           )}
           {isEnding && <span className="badge-ending">Ending</span>}
