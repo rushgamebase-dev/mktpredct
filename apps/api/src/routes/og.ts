@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import satori from 'satori'
@@ -11,7 +12,9 @@ import { db } from '../db.js'
 const app = new Hono()
 
 // Inter Bold — bundled in repo, no network dependency. ~32KB WOFF.
-const fontData = readFileSync(resolve(process.cwd(), 'apps/api/assets/inter-bold.woff'))
+// Resolve relative to this file to avoid cwd() differences between local and Docker.
+const __dir = dirname(fileURLToPath(import.meta.url))
+const fontData = readFileSync(resolve(__dir, '../../assets/inter-bold.woff'))
 
 function formatDeadline(deadline: number): string {
 	const now = Math.floor(Date.now() / 1000)
