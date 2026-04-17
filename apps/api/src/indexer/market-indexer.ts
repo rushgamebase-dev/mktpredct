@@ -1,5 +1,5 @@
 import { eq, sql, and } from 'drizzle-orm'
-import { markets, bets, claims, fees, syncState, marketStats, userStats } from '@rush/shared/db/schema'
+import { markets, bets, claims, fees, syncState, marketStats, userStats, proposerPayouts } from '@rush/shared/db/schema'
 import { MarketABI, computeOdds } from '@rush/shared'
 import type { WsServerMessage, WsGlobalMessage } from '@rush/shared'
 import { db } from '../db.js'
@@ -269,7 +269,7 @@ export async function processMarketEvent(
     }
 
     case 'FeeWithdrawn': {
-      await db
+      const [feeRow] = await db
         .insert(fees)
         .values({
           marketAddress: market.address,
@@ -280,6 +280,28 @@ export async function processMarketEvent(
           timestamp,
         })
         .onConflictDoNothing()
+        .returning()
+
+      // Fee-share: if this market was created via a proposal, record the
+      // proposer's cut. Idempotent via UNIQUE(feeEventId).
+      if (feeRow && market.proposerAddress && market.feeShareBps > 0) {
+        const feeWei = BigInt(args.amount.toString())
+        const share = (feeWei * BigInt(market.feeShareBps)) / 10000n
+        if (share > 0n) {
+          await db
+            .insert(proposerPayouts)
+            .values({
+              proposerAddress: market.proposerAddress,
+              marketAddress: market.address,
+              feeEventId: feeRow.id,
+              feeAmount: feeWei.toString(),
+              proposerShare: share.toString(),
+              createdAt: timestamp,
+            })
+            .onConflictDoNothing()
+          console.log(`[Indexer] Fee share: ${share} wei → ${market.proposerAddress.slice(0, 10)}... (${market.feeShareBps}bps of ${feeWei} wei)`)
+        }
+      }
       break
     }
   }

@@ -1,6 +1,7 @@
 export * from './types/market'
 export * from './types/api'
 export * from './types/ws'
+export * from './types/proposal'
 export * from './config'
 export * from './abi/market'
 export * from './abi/marketFactory'

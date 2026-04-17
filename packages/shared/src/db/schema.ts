@@ -14,6 +14,7 @@ import {
 } from 'drizzle-orm/pg-core'
 
 export const marketTypeEnum = pgEnum('market_type', ['classic', 'counter', 'price', 'event'])
+export const proposalStatusEnum = pgEnum('proposal_status', ['pending', 'approved', 'rejected'])
 
 export const markets = pgTable(
 	'markets',
@@ -37,10 +38,13 @@ export const markets = pgTable(
 		createdTxHash: varchar('created_tx_hash', { length: 66 }).notNull(),
 		marketType: marketTypeEnum('market_type').notNull().default('classic'),
 		sourceConfig: jsonb('source_config').default('{}'),
+		proposerAddress: varchar('proposer_address', { length: 42 }),
+		feeShareBps: integer('fee_share_bps').notNull().default(0),
 	},
 	(table) => [
 		index('idx_markets_status').on(table.status),
 		index('idx_markets_deadline').on(table.deadline),
+		index('idx_markets_proposer').on(table.proposerAddress),
 	],
 )
 
@@ -158,4 +162,42 @@ export const notifications = pgTable('notifications', {
 	createdAt: bigint('created_at', { mode: 'number' }).notNull(),
 }, (table) => [
 	index('idx_notifications_user').on(table.userAddress),
+])
+
+export const marketProposals = pgTable('market_proposals', {
+	id: serial('id').primaryKey(),
+	proposerAddress: varchar('proposer_address', { length: 42 }).notNull(),
+	question: text('question').notNull(),
+	labels: text('labels').array().notNull(),
+	deadline: bigint('deadline', { mode: 'number' }).notNull(),
+	gracePeriod: bigint('grace_period', { mode: 'number' }).notNull(),
+	marketType: marketTypeEnum('market_type').notNull().default('classic'),
+	sourceConfig: jsonb('source_config').default('{}'),
+	rationale: text('rationale'),
+	status: proposalStatusEnum('status').notNull().default('pending'),
+	rejectReason: text('reject_reason'),
+	marketAddress: varchar('market_address', { length: 42 }),
+	adminNotes: text('admin_notes'),
+	createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+	reviewedAt: bigint('reviewed_at', { mode: 'number' }),
+}, (table) => [
+	index('idx_proposals_status').on(table.status),
+	index('idx_proposals_proposer').on(table.proposerAddress),
+])
+
+export const proposerPayouts = pgTable('proposer_payouts', {
+	id: serial('id').primaryKey(),
+	proposerAddress: varchar('proposer_address', { length: 42 }).notNull(),
+	marketAddress: varchar('market_address', { length: 42 }).notNull(),
+	feeEventId: integer('fee_event_id').notNull(),
+	feeAmount: text('fee_amount').notNull(),
+	proposerShare: text('proposer_share').notNull(),
+	status: varchar('status', { length: 16 }).notNull().default('pending'),
+	payoutTxHash: varchar('payout_tx_hash', { length: 66 }),
+	createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+	paidAt: bigint('paid_at', { mode: 'number' }),
+}, (table) => [
+	index('idx_payouts_proposer').on(table.proposerAddress),
+	index('idx_payouts_status').on(table.status),
+	uniqueIndex('idx_payouts_fee_event').on(table.feeEventId),
 ])

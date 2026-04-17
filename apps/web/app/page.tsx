@@ -15,7 +15,7 @@ import LiveActivitySidebar from "@/components/home/LiveActivitySidebar";
 import NewsSidebar from "@/components/home/NewsSidebar";
 import NewsHeadlines from "@/components/home/NewsHeadlines";
 import { staggerContainer, tabContent } from "@/lib/animations";
-import { TrendingUp, CheckCircle, LayoutGrid, Activity, Zap } from "lucide-react";
+import { TrendingUp, CheckCircle, LayoutGrid, Activity, Zap, Lightbulb } from "lucide-react";
 import { formatEth } from "@/lib/format";
 import type { MarketsListQuery, ChartResponse, OddsPoint, WsGlobalMessage } from "@rush/shared";
 import { OUTCOME_COLORS } from "@rush/shared";
@@ -560,6 +560,33 @@ export default function HomePage() {
           </button>
         </div>
       )}
+
+      {/* Propose CTA */}
+      <div
+        className="mt-8 rounded-2xl p-6 text-center"
+        style={{
+          background: "linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(0,255,136,0.04) 100%)",
+          border: "1px solid rgba(59,130,246,0.12)",
+        }}
+      >
+        <Lightbulb className="mx-auto mb-2 h-6 w-6" style={{ color: "#3B82F6" }} />
+        <h3 className="text-sm font-bold text-white mb-1">Got a prediction?</h3>
+        <p className="text-xs text-gray-400 mb-3">
+          Propose a market and earn <span style={{ color: "#00ff88" }} className="font-bold">4% of every bet</span> if approved.
+        </p>
+        <a
+          href="/propose"
+          className="inline-flex items-center gap-2 rounded-lg px-5 py-2 text-xs font-bold transition-all hover:scale-105"
+          style={{
+            background: "rgba(59,130,246,0.15)",
+            border: "1px solid rgba(59,130,246,0.3)",
+            color: "#3B82F6",
+          }}
+        >
+          <Zap className="h-3.5 w-3.5" />
+          Propose a Market
+        </a>
+      </div>
     </div>
   );
 }

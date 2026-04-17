@@ -46,6 +46,12 @@ export type WsSnapshotData = {
 	recentBets: WsBetData[]
 }
 
+export type WsProposalUpdateData = {
+	proposalId: number
+	status: 'pending' | 'approved' | 'rejected'
+	marketAddress: string | null
+}
+
 // Server -> Client
 export type WsServerMessage =
 	| { type: 'snapshot'; data: WsSnapshotData }
@@ -54,6 +60,7 @@ export type WsServerMessage =
 	| { type: 'status_change'; data: WsStatusChangeData }
 	| { type: 'claim'; data: WsClaimData }
 	| { type: 'counter_update'; data: WsCounterUpdateData }
+	| { type: 'proposal_update'; data: WsProposalUpdateData }
 	| { type: 'error'; data: { message: string } }
 
 // Global feed wraps any server message with the market address
