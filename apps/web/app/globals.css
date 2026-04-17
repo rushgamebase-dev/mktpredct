@@ -516,3 +516,110 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ===== Hero Market: YES/NO glow buttons ===== */
+.btn-hero-yes {
+  background: rgba(0, 255, 136, 0.12);
+  border: 2px solid rgba(0, 255, 136, 0.35);
+  color: #00ff88;
+  font-weight: 800;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.12), 0 0 40px rgba(0, 255, 136, 0.04);
+  transition: all 0.15s;
+}
+.btn-hero-yes:hover {
+  background: rgba(0, 255, 136, 0.22);
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.25), 0 0 60px rgba(0, 255, 136, 0.08);
+  transform: scale(1.02);
+}
+.btn-hero-yes:active { transform: scale(0.97); }
+
+.btn-hero-no {
+  background: rgba(239, 68, 68, 0.12);
+  border: 2px solid rgba(239, 68, 68, 0.35);
+  color: #EF4444;
+  font-weight: 800;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.12), 0 0 40px rgba(239, 68, 68, 0.04);
+  transition: all 0.15s;
+}
+.btn-hero-no:hover {
+  background: rgba(239, 68, 68, 0.22);
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.25), 0 0 60px rgba(239, 68, 68, 0.08);
+  transform: scale(1.02);
+}
+.btn-hero-no:active { transform: scale(0.97); }
+
+/* ===== Feed card: smaller YES/NO buttons ===== */
+.btn-feed-yes {
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.25);
+  color: #00ff88;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+.btn-feed-yes:hover {
+  background: rgba(0, 255, 136, 0.2);
+  box-shadow: 0 0 16px rgba(0, 255, 136, 0.18);
+}
+
+.btn-feed-no {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #EF4444;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+.btn-feed-no:hover {
+  background: rgba(239, 68, 68, 0.2);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.18);
+}
+
+/* ===== Activity feed: entry flash on new bet ===== */
+@keyframes activityFlashGreen {
+  0% { background: rgba(0, 255, 136, 0.12); }
+  100% { background: transparent; }
+}
+@keyframes activityFlashRed {
+  0% { background: rgba(239, 68, 68, 0.12); }
+  100% { background: transparent; }
+}
+.activity-flash-yes { animation: activityFlashGreen 1.2s ease-out; }
+.activity-flash-no  { animation: activityFlashRed 1.2s ease-out; }
+
+/* ===== Badge: ending soon (orange pulse) ===== */
+.badge-ending {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(249, 115, 22, 0.15);
+  color: #F97316;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  animation: hotPulse 2s ease-in-out infinite;
+}
+
+/* ===== Hero market: ambient glow behind container ===== */
+.hero-market-glow {
+  position: relative;
+}
+.hero-market-glow::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(0,255,136,0.08) 0%, rgba(239,68,68,0.04) 100%);
+  z-index: -1;
+  filter: blur(24px);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ===== Odds split: vertical divider ===== */
+.odds-vs-divider {
+  width: 1px;
+  align-self: stretch;
+  background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+}

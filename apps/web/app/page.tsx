@@ -1,24 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMarkets } from "@/hooks/useMarkets";
 import { useGlobalFeed } from "@/hooks/useGlobalFeed";
-import { apiGet } from "@/lib/api";
-import MarketCard from "@/components/market/MarketCard";
-import { MarketCardSkeletonGrid } from "@/components/market/MarketCardSkeleton";
-import HeroChart from "@/components/home/HeroChart";
-import MarketSelector from "@/components/home/MarketSelector";
-import LiveActivitySidebar from "@/components/home/LiveActivitySidebar";
-import NewsSidebar from "@/components/home/NewsSidebar";
+import HeroMarket from "@/components/home/HeroMarket";
+import LiveActivityFeed from "@/components/home/LiveActivityFeed";
+import MarketFeedCard from "@/components/home/MarketFeedCard";
+import { MarketFeedCardSkeletonGrid } from "@/components/market/MarketCardSkeleton";
 import NewsHeadlines from "@/components/home/NewsHeadlines";
 import { staggerContainer, tabContent } from "@/lib/animations";
 import { TrendingUp, CheckCircle, LayoutGrid, Activity, Zap, Lightbulb } from "lucide-react";
 import { formatEth } from "@/lib/format";
-import type { MarketsListQuery, ChartResponse, OddsPoint, WsGlobalMessage } from "@rush/shared";
-import { OUTCOME_COLORS } from "@rush/shared";
+import type { MarketsListQuery, WsGlobalMessage } from "@rush/shared";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,31 +49,13 @@ const sectionVariants = {
 // ---------------------------------------------------------------------------
 
 export default function HomePage() {
-  const router = useRouter();
   const queryClient = useQueryClient();
-
-  // Responsive hero chart height
-  const [heroHeight, setHeroHeight] = useState(480);
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)');
-    const update = () => setHeroHeight(mq.matches ? 320 : 480);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, []);
-
-  // Market selection / hover
-  const [selectedMarket, setSelectedMarket] = useState<string | null>(null);
-  const [hoveredMarket, setHoveredMarket] = useState<string | null>(null);
 
   // Status filter & pagination
   const [status, setStatus] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
 
-  // Chart data
-  const [chartDataMap, setChartDataMap] = useState<Record<string, OddsPoint[]>>({});
-
-  // Last WS bet event (passed to LiveActivitySidebar for instant prepend)
+  // Last WS bet event (passed to HeroMarket + LiveActivityFeed)
   const [lastWsBet, setLastWsBet] = useState<WsGlobalMessage | null>(null);
 
   const queryParams: MarketsListQuery = {
@@ -102,7 +79,6 @@ export default function HomePage() {
         setLastWsBet(msg);
         break;
       case "odds_update":
-        // Update markets list cache directly with WS payload
         queryClient.setQueryData(["markets", page, 20, status === "all" ? "all" : status], (old: any) => {
           if (!old?.markets) return old;
           return {
@@ -114,17 +90,8 @@ export default function HomePage() {
             ),
           };
         });
-        // Append synthetic point to hero chart so it updates live
-        setChartDataMap((prev) => {
-          if (!prev[addr]) return prev;
-          return {
-            ...prev,
-            [addr]: [...prev[addr], { timestamp: Math.floor(Date.now() / 1000), odds: msg.data.odds }],
-          };
-        });
         break;
       case "status_change":
-        // Direct update: set status on the affected market
         queryClient.setQueryData(["markets", page, 20, status === "all" ? "all" : status], (old: any) => {
           if (!old?.markets) return old;
           return {
@@ -137,94 +104,30 @@ export default function HomePage() {
           };
         });
         break;
-      case "counter_update":
-        // Counter data doesn't live in markets list cache — no-op here
-        // Counter markets have their own dedicated page
-        break;
     }
   }, [queryClient, page, status]);
 
-  // On WS reconnect: refetch markets list (recovery from missed events)
   const handleGlobalReconnect = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["markets"] });
-    setChartDataMap({}); // Clear chart cache — will refetch fresh
   }, [queryClient]);
 
   useGlobalFeed(handleGlobalMessage, handleGlobalReconnect);
 
-  // Hero chart: counter markets first (AIXBT etc), then by pool, max 5
-  const heroMarkets = useMemo(
-    () => {
-      const open = markets.filter((m) => m.status === "open");
-      // Counter markets first (featured)
-      const counters = open.filter((m) => m.marketType === "counter");
-      const rest = open
-        .filter((m) => m.marketType !== "counter")
-        .sort((a, b) => {
-          const poolA = BigInt(a.totalPool);
-          const poolB = BigInt(b.totalPool);
-          return poolB > poolA ? 1 : poolB < poolA ? -1 : 0;
-        });
-      return [...counters, ...rest].slice(0, 5);
-    },
-    [markets],
-  );
-
-  // ---------------------------------------------------------------------------
-  // Fetch chart data — REAL data only, no synthetic
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    if (heroMarkets.length === 0) return;
-    let cancelled = false;
-
-    const fetchCharts = async () => {
-      const entries: [string, OddsPoint[]][] = [];
-
-      const results = await Promise.allSettled(
-        heroMarkets.map(async (m) => {
-          if (chartDataMap[m.address]?.length) return null;
-          try {
-            const resp = await apiGet<ChartResponse>(`/api/markets/${m.address}/chart`);
-            return { address: m.address, points: resp.points };
-          } catch {
-            return null;
-          }
-        }),
-      );
-
-      if (cancelled) return;
-
-      results.forEach((r) => {
-        if (r.status === "fulfilled" && r.value) {
-          entries.push([r.value.address, r.value.points]);
-        }
+  // Hero: counter markets first, then by pool, pick the hottest
+  const heroMarkets = useMemo(() => {
+    const open = markets.filter((m) => m.status === "open");
+    const counters = open.filter((m) => m.marketType === "counter");
+    const rest = open
+      .filter((m) => m.marketType !== "counter")
+      .sort((a, b) => {
+        const poolA = BigInt(a.totalPool);
+        const poolB = BigInt(b.totalPool);
+        return poolB > poolA ? 1 : poolB < poolA ? -1 : 0;
       });
+    return [...counters, ...rest].slice(0, 5);
+  }, [markets]);
 
-      if (entries.length > 0) {
-        setChartDataMap((prev) => {
-          const next = { ...prev };
-          entries.forEach(([addr, pts]) => {
-            next[addr] = pts;
-          });
-          return next;
-        });
-      }
-    };
-
-    fetchCharts();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heroMarkets.map((m) => m.address).join(",")]);
-
-  // ---------------------------------------------------------------------------
-  // Selected market info (for quick-bet buttons)
-  // ---------------------------------------------------------------------------
-  const selectedMarketData = useMemo(() => {
-    if (!selectedMarket) return null;
-    return markets.find((m) => m.address === selectedMarket) ?? null;
-  }, [selectedMarket, markets]);
+  const heroMarket = heroMarkets[0] ?? null;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -249,7 +152,6 @@ export default function HomePage() {
               The first prediction market focused on the Base ecosystem
             </p>
           </div>
-          {/* Tension stats */}
           {heroMarkets.length > 0 && (
             <div className="hidden sm:flex items-center gap-4">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: "rgba(0,255,136,0.06)", border: "1px solid rgba(0,255,136,0.15)" }}>
@@ -259,10 +161,7 @@ export default function HomePage() {
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: "rgba(255,200,40,0.06)", border: "1px solid rgba(255,200,40,0.15)" }}>
                 <Zap className="h-3.5 w-3.5" style={{ color: "#ffc828" }} />
                 <span className="text-xs font-bold" style={{ color: "#ffc828" }}>
-                  {formatEth(heroMarkets.reduce((sum, m) => {
-                    const pool = BigInt(m.totalPool);
-                    return sum + pool;
-                  }, BigInt(0)).toString())} total pool
+                  {formatEth(heroMarkets.reduce((sum, m) => sum + BigInt(m.totalPool), 0n).toString())} total pool
                 </span>
               </div>
             </div>
@@ -270,160 +169,51 @@ export default function HomePage() {
         </div>
       </motion.div>
 
-      {/* ---- Section 1: Market Selector pills ---- */}
+      {/* ---- Section 1: HERO MARKET ---- */}
       <motion.div
         variants={sectionVariants}
         initial="hidden"
         animate="visible"
         custom={1}
-        className="mb-4"
+        className="mb-5"
       >
-        {heroMarkets.length > 0 && (
-          <MarketSelector
-            markets={heroMarkets}
-            selected={selectedMarket}
-            onSelect={setSelectedMarket}
-            hovered={hoveredMarket}
-            onHover={setHoveredMarket}
-          />
-        )}
+        {heroMarket ? (
+          <HeroMarket market={heroMarket} lastWsBet={lastWsBet} />
+        ) : isLoading ? (
+          <div className="skeleton h-[280px] sm:h-[320px] rounded-2xl" />
+        ) : null}
       </motion.div>
 
-      {/* ---- Section 2: Hero Chart + Activity Sidebar ---- */}
+      {/* ---- Section 2: LIVE ACTIVITY FEED ---- */}
       <motion.div
         variants={sectionVariants}
         initial="hidden"
         animate="visible"
         custom={2}
-        className="mb-6 grid grid-cols-1 lg:grid-cols-10 gap-4"
+        className="mb-6"
       >
-        {/* Chart */}
-        <div
-          className="lg:col-span-7 rounded-xl overflow-hidden"
-          style={{
-            background: "var(--surface, #111)",
-            border: "1px solid var(--border, rgba(255,255,255,0.08))",
-          }}
-        >
-          {heroMarkets.length > 0 ? (
-            <HeroChart
-              markets={heroMarkets}
-              chartDataMap={chartDataMap}
-              selectedMarket={selectedMarket}
-              onSelectMarket={setSelectedMarket}
-              hoveredMarket={hoveredMarket}
-              onHoverMarket={setHoveredMarket}
-              height={heroHeight}
-            />
-          ) : (
-            <div
-              className="flex items-center justify-center animate-pulse"
-              style={{ height: heroHeight, background: "rgba(255,255,255,0.02)" }}
-            >
-              <span className="text-xs text-gray-600">Loading chart...</span>
-            </div>
-          )}
-
-          {/* Quick-bet buttons (single-market mode) → navigate to market */}
-          {selectedMarketData && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="px-4 pb-4 pt-1 flex gap-2"
-            >
-              {selectedMarketData.labels.slice(0, 4).map((label, idx) => {
-                const color = OUTCOME_COLORS[idx % OUTCOME_COLORS.length];
-                const odds = Math.round(selectedMarketData.odds[idx] ?? 0);
-                return (
-                  <button
-                    key={label}
-                    onClick={() => router.push(`/markets/${selectedMarket}?outcome=${idx}`)}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-bold transition-all hover:scale-[1.03] active:scale-[0.97]"
-                    style={{
-                      background: color + "18",
-                      border: `1px solid ${color}40`,
-                      color: color,
-                      boxShadow: `0 0 12px ${color}15`,
-                    }}
-                  >
-                    <span
-                      className="w-2.5 h-2.5 rounded-full"
-                      style={{ background: color }}
-                    />
-                    {label} {odds}%
-                  </button>
-                );
-              })}
-            </motion.div>
-          )}
-        </div>
-
-        {/* Activity sidebar -- desktop: full height, mobile: capped */}
-        <div className="lg:col-span-3 max-h-[280px] lg:max-h-none">
-          {markets.length > 0 ? (
-            <LiveActivitySidebar markets={markets} lastWsBet={lastWsBet} />
-          ) : (
-            <div
-              className="rounded-xl animate-pulse h-full"
-              style={{
-                background: "var(--surface, #111)",
-                border: "1px solid var(--border, rgba(255,255,255,0.08))",
-                minHeight: 200,
-              }}
-            />
-          )}
-        </div>
+        {markets.length > 0 ? (
+          <LiveActivityFeed markets={markets} lastWsBet={lastWsBet} />
+        ) : isLoading ? (
+          <div className="skeleton h-[200px] rounded-xl" />
+        ) : null}
       </motion.div>
 
       {/* ---- Divider ---- */}
-      <div
-        className="mb-6"
-        style={{ height: 1, background: "rgba(255,255,255,0.06)" }}
-      />
+      <div className="mb-6" style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
 
-      {/* ---- LIVE TICKER STRIP ---- */}
-      <motion.div
-        variants={sectionVariants} initial="hidden" animate="visible" custom={3}
-        className="mb-6 overflow-hidden rounded-lg py-2 px-4"
-        style={{ background: "rgba(0,255,136,0.03)", border: "1px solid rgba(0,255,136,0.08)" }}
-      >
-        <div className="flex items-center gap-6 animate-slide-in">
-          <span className="flex items-center gap-1.5 shrink-0">
-            <span className="live-dot-green" style={{ width: 6, height: 6 }} />
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#00ff88" }}>Live</span>
-          </span>
-          <div className="flex items-center gap-4 overflow-x-auto text-xs text-gray-400" style={{ scrollbarWidth: "none" }}>
-            {heroMarkets.flatMap((m) =>
-              (m.odds ?? []).slice(0, 2).map((odd, i) => (
-                <span key={`${m.address}-${i}`} className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
-                  <span className="font-bold text-gray-300">{m.labels[i]}</span>
-                  <span className="tabular" style={{ color: odd > 55 ? "#00ff88" : odd < 45 ? "#ff4444" : "#888" }}>
-                    {Math.round(odd)}%
-                  </span>
-                  <span className="text-gray-600">·</span>
-                  <span className="text-gray-500">{m.question.split(/\s+/).slice(0, 3).join(" ")}</span>
-                </span>
-              )),
-            )}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ---- HEADLINES (real from API) ---- */}
-      <NewsHeadlines />
-
-      {/* ---- Section: "All Markets" heading ---- */}
+      {/* ---- "All Markets" heading ---- */}
       <motion.div
         variants={sectionVariants}
         initial="hidden"
         animate="visible"
-        custom={5}
+        custom={3}
         className="mb-4 flex items-center justify-between"
       >
         <h2 className="text-lg font-bold text-white">All Markets</h2>
       </motion.div>
 
-      {/* ---- Section 4: Status filter tabs ---- */}
+      {/* ---- Status filter tabs ---- */}
       <motion.div
         variants={sectionVariants}
         initial="hidden"
@@ -433,31 +223,17 @@ export default function HomePage() {
       >
         <div
           className="inline-flex gap-1 rounded-lg p-1"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-          }}
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
         >
           {TABS.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => {
-                setStatus(tab.key);
-                setPage(1);
-              }}
+              onClick={() => { setStatus(tab.key); setPage(1); }}
               className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-all"
               style={
                 status === tab.key
-                  ? {
-                      background: "rgba(0,255,136,0.1)",
-                      color: "#00ff88",
-                      border: "1px solid rgba(0,255,136,0.2)",
-                    }
-                  : {
-                      background: "transparent",
-                      color: "#666",
-                      border: "1px solid transparent",
-                    }
+                  ? { background: "rgba(0,255,136,0.1)", color: "#00ff88", border: "1px solid rgba(0,255,136,0.2)" }
+                  : { background: "transparent", color: "#666", border: "1px solid transparent" }
               }
             >
               {tab.icon}
@@ -467,17 +243,14 @@ export default function HomePage() {
         </div>
       </motion.div>
 
-      {/* ---- Loading state ---- */}
-      {isLoading && <MarketCardSkeletonGrid count={6} />}
+      {/* ---- Loading ---- */}
+      {isLoading && <MarketFeedCardSkeletonGrid count={6} />}
 
-      {/* ---- Error state ---- */}
+      {/* ---- Error ---- */}
       {error && (
         <div
           className="rounded-lg p-6 text-center"
-          style={{
-            background: "rgba(255,68,68,0.05)",
-            border: "1px solid rgba(255,68,68,0.15)",
-          }}
+          style={{ background: "rgba(255,68,68,0.05)", border: "1px solid rgba(255,68,68,0.15)" }}
         >
           <p className="text-sm text-red-400">Failed to load markets</p>
           <p className="mt-1 text-xs text-gray-600">
@@ -486,32 +259,29 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ---- Markets grid ---- */}
+      {/* ---- Market Feed (2 cols desktop, 1 col mobile) ---- */}
       {data && data.markets.length > 0 && (
         <AnimatePresence mode="wait">
-          <motion.div key="market-grid" {...tabContent}>
+          <motion.div key="market-feed" {...tabContent}>
             <motion.div
               variants={staggerContainer}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+              className="grid grid-cols-1 gap-4 lg:grid-cols-2"
             >
               {data.markets.map((market, i) => (
-                <MarketCard key={market.address} market={market} index={i} />
+                <MarketFeedCard key={market.address} market={market} index={i} />
               ))}
             </motion.div>
           </motion.div>
         </AnimatePresence>
       )}
 
-      {/* ---- Empty state ---- */}
+      {/* ---- Empty ---- */}
       {data && data.markets.length === 0 && !isLoading && (
         <div
           className="rounded-xl p-12 text-center"
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-          }}
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
         >
           <div
             className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full"
@@ -521,9 +291,7 @@ export default function HomePage() {
           </div>
           <p className="text-sm font-semibold text-gray-300">No markets found</p>
           <p className="mt-1 text-xs text-gray-600">
-            {status === "all"
-              ? "No markets have been created yet."
-              : `No ${status} markets right now.`}
+            {status === "all" ? "No markets have been created yet." : `No ${status} markets right now.`}
           </p>
         </div>
       )}
@@ -535,11 +303,7 @@ export default function HomePage() {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
             className="rounded-lg px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-30"
-            style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              color: "var(--text)",
-            }}
+            style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}
           >
             Previous
           </button>
@@ -550,18 +314,19 @@ export default function HomePage() {
             onClick={() => setPage((p) => p + 1)}
             disabled={page >= Math.ceil(data.total / data.pageSize)}
             className="rounded-lg px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-30"
-            style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              color: "var(--text)",
-            }}
+            style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)" }}
           >
             Next
           </button>
         </div>
       )}
 
-      {/* Propose CTA */}
+      {/* ---- Headlines (secondary, at bottom) ---- */}
+      <div className="mt-6">
+        <NewsHeadlines />
+      </div>
+
+      {/* ---- Propose CTA ---- */}
       <div
         className="mt-8 rounded-2xl p-6 text-center"
         style={{
@@ -577,11 +342,7 @@ export default function HomePage() {
         <a
           href="/propose"
           className="inline-flex items-center gap-2 rounded-lg px-5 py-2 text-xs font-bold transition-all hover:scale-105"
-          style={{
-            background: "rgba(59,130,246,0.15)",
-            border: "1px solid rgba(59,130,246,0.3)",
-            color: "#3B82F6",
-          }}
+          style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "#3B82F6" }}
         >
           <Zap className="h-3.5 w-3.5" />
           Propose a Market

@@ -103,3 +103,13 @@ export function MarketCardSkeletonGrid({ count = 6 }: { count?: number }) {
     </div>
   );
 }
+
+export function MarketFeedCardSkeletonGrid({ count = 6 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <MarketCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
