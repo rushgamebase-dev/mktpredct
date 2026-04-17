@@ -8,6 +8,18 @@ import { db } from '../db.js'
 
 const app = new Hono()
 
+// Font cache — loaded once, reused for all requests
+let fontDataCache: ArrayBuffer | null = null
+async function getFont(): Promise<ArrayBuffer> {
+	if (fontDataCache) return fontDataCache
+	// Inter Bold from Google Fonts (open source, SIL OFL license)
+	const res = await fetch(
+		'https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKv0o.woff2',
+	)
+	fontDataCache = await res.arrayBuffer()
+	return fontDataCache
+}
+
 function formatDeadline(deadline: number): string {
 	const now = Math.floor(Date.now() / 1000)
 	const diff = deadline - now
@@ -187,10 +199,13 @@ app.get('/:address', async (c) => {
 		},
 	}
 
+	const fontData = await getFont()
 	const svg = await satori(element as any, {
 		width: 1200,
 		height: 630,
-		fonts: [],
+		fonts: [
+			{ name: 'Inter', data: fontData, weight: 700, style: 'normal' },
+		],
 	})
 
 	const resvg = new Resvg(svg, {
