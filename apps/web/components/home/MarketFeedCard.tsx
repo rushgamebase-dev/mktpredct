@@ -115,10 +115,12 @@ export default function MarketFeedCard({ market, index }: MarketFeedCardProps) {
             </span>
           </div>
           <div className="flex items-center gap-3 text-[10px] text-gray-500">
-            <span className="flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" />
-              {formatEth(market.totalPool)}
-            </span>
+            {BigInt(market.totalPool) >= BigInt("10000000000000000") && (
+              <span className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" />
+                {formatEth(market.totalPool)}
+              </span>
+            )}
             <span className="flex items-center gap-1" style={isEnding ? { color: "#F97316" } : {}}>
               <Clock className="h-3 w-3" />
               {deadlineText}

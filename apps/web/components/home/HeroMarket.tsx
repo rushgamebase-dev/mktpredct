@@ -58,13 +58,13 @@ export default function HeroMarket({ market, lastWsBet }: HeroMarketProps) {
         border: "1px solid rgba(255,255,255,0.08)",
       }}
     >
-      {/* Question */}
-      <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white leading-tight mb-3 lg:mb-4">
+      {/* Question — big, central, homepage hero */}
+      <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight mb-2 lg:mb-3 text-center sm:text-left">
         {market.question}
       </h2>
 
-      {/* Stats row */}
-      <div className="flex flex-wrap items-center gap-2 mb-5 lg:mb-6">
+      {/* Stats row — de-emphasize tiny pools */}
+      <div className="flex flex-wrap items-center gap-2 mb-5 lg:mb-6 justify-center sm:justify-start">
         {isOpen && (
           <span
             className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase"
@@ -86,10 +86,12 @@ export default function HeroMarket({ market, lastWsBet }: HeroMarketProps) {
             {deadline.text}
           </span>
         )}
-        <span className="flex items-center gap-1 text-[10px] text-gray-500">
-          <TrendingUp className="h-3 w-3" />
-          {poolFormatted} pool
-        </span>
+        {BigInt(market.totalPool) >= BigInt("10000000000000000") && (
+          <span className="flex items-center gap-1 text-[10px] text-gray-500">
+            <TrendingUp className="h-3 w-3" />
+            {poolFormatted} pool
+          </span>
+        )}
       </div>
 
       {/* YES vs NO split */}
