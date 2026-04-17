@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { Hono } from 'hono'
 import { eq } from 'drizzle-orm'
 import satori from 'satori'
@@ -8,19 +10,8 @@ import { db } from '../db.js'
 
 const app = new Hono()
 
-// Font cache — loaded once on first OG request, reused for all subsequent
-let fontDataCache: ArrayBuffer | null = null
-async function getFont(): Promise<ArrayBuffer> {
-	if (fontDataCache) return fontDataCache
-	// Inter Bold (OTF) from GitHub — reliable, no user-agent restrictions
-	const res = await fetch(
-		'https://github.com/rsms/inter/raw/master/fonts/inter/Inter-Bold.otf',
-		{ headers: { 'User-Agent': 'RushMarkets-OG/1.0' } },
-	)
-	if (!res.ok) throw new Error(`Font fetch failed: ${res.status}`)
-	fontDataCache = await res.arrayBuffer()
-	return fontDataCache
-}
+// Inter Bold — bundled in repo, no network dependency. ~32KB WOFF.
+const fontData = readFileSync(resolve(process.cwd(), 'apps/api/assets/inter-bold.woff'))
 
 function formatDeadline(deadline: number): string {
 	const now = Math.floor(Date.now() / 1000)
@@ -201,12 +192,11 @@ app.get('/:address', async (c) => {
 		},
 	}
 
-	const fontData = await getFont()
 	const svg = await satori(element as any, {
 		width: 1200,
 		height: 630,
 		fonts: [
-			{ name: 'Inter', data: fontData, weight: 700, style: 'normal' },
+			{ name: 'Inter', data: fontData.buffer as ArrayBuffer, weight: 700, style: 'normal' as const },
 		],
 	})
 
