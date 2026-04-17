@@ -62,10 +62,9 @@ export async function generateMetadata({
 
   const title = `${market.question} | Rush Markets`;
   const description = `${yesLabel} ${yesOdds}% vs ${noLabel} ${noOdds}%${pool ? ` · ${pool} pool` : ""}${timer !== "Ended" ? ` · ${timer}` : ""} — Bet now on Rush`;
-  // OG image served from Railway API (not Vercel) to bypass Vercel WAF that
-  // blocks Twitter/Discord crawlers with a security checkpoint page.
+  // OG image served from Railway API (not Vercel) to bypass Vercel WAF.
+  // Single image only — multiple twitter:image tags confuse Twitter's crawler.
   const ogImageUrl = `${API_URL}/api/og/${address}`;
-  const ogFallback = `${SITE_URL}/og-fallback.png`;
   const marketUrl = `${SITE_URL}/markets/${address}`;
 
   return {
@@ -76,17 +75,14 @@ export async function generateMetadata({
       description,
       url: marketUrl,
       siteName: "Rush Markets",
-      images: [
-        { url: ogImageUrl, width: 1200, height: 630, alt: market.question },
-        { url: ogFallback, width: 1200, height: 630, alt: "Rush Markets" },
-      ],
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: market.question }],
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
       title: market.question,
       description,
-      images: [ogImageUrl, ogFallback],
+      images: [ogImageUrl],
     },
   };
 }
