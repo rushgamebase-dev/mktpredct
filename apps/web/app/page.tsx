@@ -7,6 +7,7 @@ import { useMarkets } from "@/hooks/useMarkets";
 import { useGlobalFeed } from "@/hooks/useGlobalFeed";
 import HeroMarket from "@/components/home/HeroMarket";
 import SocialProofBar from "@/components/home/SocialProofBar";
+import RushCarsBanner from "@/components/home/RushCarsBanner";
 import LiveActivityFeed from "@/components/home/LiveActivityFeed";
 import MarketFeedCard from "@/components/home/MarketFeedCard";
 import { MarketFeedCardSkeletonGrid } from "@/components/market/MarketCardSkeleton";
@@ -192,6 +193,11 @@ export default function HomePage() {
           <div className="skeleton h-[280px] sm:h-[320px] rounded-2xl" />
         ) : null}
       </motion.div>
+
+      {/* ---- Rush Cars Banner ---- */}
+      <div className="mb-4">
+        <RushCarsBanner />
+      </div>
 
       {/* ---- Social Proof Bar ---- */}
       {markets.length > 0 && (
