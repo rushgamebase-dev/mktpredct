@@ -63,6 +63,7 @@ export async function generateMetadata({
   const title = `${market.question} | Rush Markets`;
   const description = `${yesLabel} ${yesOdds}% vs ${noLabel} ${noOdds}%${pool ? ` · ${pool} pool` : ""}${timer !== "Ended" ? ` · ${timer}` : ""} — Bet now on Rush`;
   const ogImageUrl = `${SITE_URL}/api/og/${address}`;
+  const ogFallback = `${SITE_URL}/og-fallback.png`;
   const marketUrl = `${SITE_URL}/markets/${address}`;
 
   return {
@@ -73,14 +74,17 @@ export async function generateMetadata({
       description,
       url: marketUrl,
       siteName: "Rush Markets",
-      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: market.question }],
+      images: [
+        { url: ogImageUrl, width: 1200, height: 630, alt: market.question },
+        { url: ogFallback, width: 1200, height: 630, alt: "Rush Markets" },
+      ],
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
       title: market.question,
       description,
-      images: [ogImageUrl],
+      images: [ogImageUrl, ogFallback],
     },
   };
 }
