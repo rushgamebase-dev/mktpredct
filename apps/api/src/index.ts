@@ -22,6 +22,7 @@ import notificationsRoutes from './routes/notifications.js'
 import newsRoutes from './routes/news.js'
 import proposalsRoutes from './routes/proposals.js'
 import adminProposalsRoutes from './routes/admin-proposals.js'
+import agentRoutes from './routes/agent.js'
 import ogRoutes from './routes/og.js'
 
 const app = new Hono()
@@ -54,6 +55,7 @@ app.route('/api/users', notificationsRoutes)
 app.route('/api/news', newsRoutes)
 app.route('/api/proposals', proposalsRoutes)
 app.route('/api/admin/proposals', adminProposalsRoutes)
+app.route('/api/agent', agentRoutes)
 app.route('/api/og', ogRoutes)
 
 // Start HTTP server

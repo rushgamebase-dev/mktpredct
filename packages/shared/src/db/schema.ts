@@ -178,11 +178,26 @@ export const marketProposals = pgTable('market_proposals', {
 	rejectReason: text('reject_reason'),
 	marketAddress: varchar('market_address', { length: 42 }),
 	adminNotes: text('admin_notes'),
+	agentId: integer('agent_id'),
 	createdAt: bigint('created_at', { mode: 'number' }).notNull(),
 	reviewedAt: bigint('reviewed_at', { mode: 'number' }),
 }, (table) => [
 	index('idx_proposals_status').on(table.status),
 	index('idx_proposals_proposer').on(table.proposerAddress),
+])
+
+export const agents = pgTable('agents', {
+	id: serial('id').primaryKey(),
+	name: varchar('name', { length: 255 }).notNull(),
+	keyHash: varchar('key_hash', { length: 64 }).notNull(),
+	walletAddress: varchar('wallet_address', { length: 42 }).notNull(),
+	rateLimitPerHour: integer('rate_limit_per_hour').notNull().default(10),
+	feeShareBps: integer('fee_share_bps').notNull().default(8000),
+	isActive: boolean('is_active').notNull().default(true),
+	createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+	lastUsedAt: bigint('last_used_at', { mode: 'number' }),
+}, (table) => [
+	uniqueIndex('idx_agents_key_hash').on(table.keyHash),
 ])
 
 export const proposerPayouts = pgTable('proposer_payouts', {

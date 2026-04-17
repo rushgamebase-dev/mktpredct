@@ -4,10 +4,11 @@ import { isAddress, parseEventLogs } from 'viem'
 import { MarketFactoryABI } from '@rush/shared'
 import type { ApproveProposalRequest, ApproveProposalResponse, RejectProposalRequest, ProposerPayoutsResponse, ProposerPayoutSummary } from '@rush/shared'
 import { adminAuth } from '../middleware/auth.js'
+import { generateAgentKey } from '../middleware/agent-auth.js'
 import { walletClient, publicClient } from '../services/chain.js'
 import { env } from '../env.js'
 import { db } from '../db.js'
-import { markets, marketProposals, proposerPayouts } from '@rush/shared/db/schema'
+import { agents, markets, marketProposals, proposerPayouts } from '@rush/shared/db/schema'
 import { broadcast } from '../ws/broadcast.js'
 
 // feeShareBps is applied to the collected fee amount (5% of pool), not the
@@ -254,6 +255,60 @@ app.post('/payouts/send', async (c) => {
 
 	console.log(`[admin-proposals] Paid ${amount} wei to ${addr} | tx=${txHash}`)
 	return c.json({ txHash, proposerAddress: addr, amount: amount.toString() })
+})
+
+// POST /api/admin/proposals/agents — register a new agent
+app.post('/agents', async (c) => {
+	const body = await c.req.json<{ name: string; walletAddress: string; rateLimitPerHour?: number; feeShareBps?: number }>()
+
+	if (!body.name || body.name.length < 1 || body.name.length > 255) {
+		return c.json({ error: 'name is required (1-255 chars)' }, 400)
+	}
+	if (!body.walletAddress || !isAddress(body.walletAddress)) {
+		return c.json({ error: 'Valid walletAddress is required' }, 400)
+	}
+
+	const { raw, hash } = generateAgentKey()
+	const now = Math.floor(Date.now() / 1000)
+
+	const [agent] = await db.insert(agents).values({
+		name: body.name.trim(),
+		keyHash: hash,
+		walletAddress: body.walletAddress.toLowerCase(),
+		rateLimitPerHour: body.rateLimitPerHour ?? 10,
+		feeShareBps: body.feeShareBps ?? 8000,
+		createdAt: now,
+	}).returning()
+
+	console.log(`[Admin] Agent registered: "${agent.name}" id=${agent.id} wallet=${agent.walletAddress.slice(0, 10)}`)
+
+	return c.json({
+		agent: {
+			id: agent.id,
+			name: agent.name,
+			walletAddress: agent.walletAddress,
+			rateLimitPerHour: agent.rateLimitPerHour,
+			feeShareBps: agent.feeShareBps,
+		},
+		// API key shown ONCE — cannot be retrieved later
+		apiKey: raw,
+	}, 201)
+})
+
+// GET /api/admin/proposals/agents — list all agents
+app.get('/agents', async (c) => {
+	const rows = await db.select({
+		id: agents.id,
+		name: agents.name,
+		walletAddress: agents.walletAddress,
+		rateLimitPerHour: agents.rateLimitPerHour,
+		feeShareBps: agents.feeShareBps,
+		isActive: agents.isActive,
+		createdAt: agents.createdAt,
+		lastUsedAt: agents.lastUsedAt,
+	}).from(agents)
+
+	return c.json({ agents: rows })
 })
 
 export default app
