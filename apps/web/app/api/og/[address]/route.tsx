@@ -3,7 +3,13 @@ import { NextRequest } from "next/server";
 
 export const runtime = "edge";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+// Server-side only — safe to use the production API URL directly.
+// NEXT_PUBLIC_API_URL may not be set in Vercel env vars, causing localhost
+// fallback which breaks on Edge. This route never runs in the browser.
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.API_URL ||
+  "https://rush-api-production.up.railway.app";
 
 function formatDeadline(deadline: number): string {
   const now = Math.floor(Date.now() / 1000);

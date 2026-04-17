@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+// Server-side metadata generation — safe to use production URLs directly.
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.API_URL ||
+  "https://rush-api-production.up.railway.app";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://markets.rushgame.vip";
 
 interface MarketMeta {
