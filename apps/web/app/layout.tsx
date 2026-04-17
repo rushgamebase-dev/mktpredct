@@ -4,8 +4,20 @@ import Header from "@/components/layout/Header";
 import NewsTicker from "@/components/layout/NewsTicker";
 
 export const metadata = {
-  title: "Rush Markets -- Prediction Markets on Base",
-  description: "On-chain prediction markets on Base. Bet on the future.",
+  title: "Rush Markets — Prediction Markets on Base",
+  description: "On-chain prediction markets on Base. Bet on the future with real ETH.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://markets.rushgame.vip"),
+  openGraph: {
+    title: "Rush Markets — Prediction Markets on Base",
+    description: "Bet on the future with real ETH. Propose markets & earn 4% of the pool.",
+    siteName: "Rush Markets",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image" as const,
+    title: "Rush Markets — Prediction Markets on Base",
+    description: "Bet on the future with real ETH. Propose markets & earn 4% of the pool.",
+  },
 };
 
 export const viewport = {

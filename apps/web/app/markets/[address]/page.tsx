@@ -23,6 +23,7 @@ import { fadeInUp } from "@/lib/animations";
 import { useActivity } from "@/hooks/useActivity";
 import { useMarkets } from "@/hooks/useMarkets";
 import { ArrowLeft, Clock, Users, Coins, Trophy, Zap, Timer } from "lucide-react";
+import ShareButton from "@/components/market/ShareButton";
 
 export default function MarketDetailPage() {
   const params = useParams();
@@ -357,7 +358,10 @@ export default function MarketDetailPage() {
           <h1 className="text-xl font-black leading-tight text-white sm:text-2xl">
             {market.question}
           </h1>
-          {statusBadge()}
+          <div className="flex items-center gap-2">
+            <ShareButton market={market} variant="full" />
+            {statusBadge()}
+          </div>
         </div>
 
         {/* Narrative context */}

@@ -7,6 +7,7 @@ import type { MarketSummary, WsGlobalMessage } from "@rush/shared";
 import { formatEth, timeAgo } from "@/lib/format";
 import { heroEntrance } from "@/lib/animations";
 import { Clock, TrendingUp, Zap, ArrowRight } from "lucide-react";
+import ShareButton from "@/components/market/ShareButton";
 
 interface HeroMarketProps {
   market: MarketSummary;
@@ -201,6 +202,11 @@ export default function HeroMarket({ market, lastWsBet }: HeroMarketProps) {
           </button>
         </div>
       )}
+
+      {/* Share */}
+      <div className="mt-4 flex justify-center">
+        <ShareButton market={market} variant="full" />
+      </div>
 
       {/* Last bet indicator */}
       <AnimatePresence>

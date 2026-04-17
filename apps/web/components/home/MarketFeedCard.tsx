@@ -7,6 +7,7 @@ import type { MarketSummary } from "@rush/shared";
 import { cardVariants } from "@/lib/animations";
 import { formatEth } from "@/lib/format";
 import { Clock, Zap, TrendingUp } from "lucide-react";
+import ShareButton from "@/components/market/ShareButton";
 
 interface MarketFeedCardProps {
   market: MarketSummary;
@@ -66,12 +67,13 @@ export default function MarketFeedCard({ market, index }: MarketFeedCardProps) {
       }}
       onClick={() => router.push(`/markets/${market.address}`)}
     >
-      {/* Top: question + badges */}
+      {/* Top: question + badges + share */}
       <div className="flex items-start gap-2.5 mb-3">
         <span className="text-lg shrink-0 mt-0.5">{emoji}</span>
         <h3 className="flex-1 text-sm sm:text-base font-semibold text-gray-100 leading-snug line-clamp-2">
           {market.question}
         </h3>
+        <ShareButton market={market} variant="icon" className="shrink-0 -mr-1" />
         <div className="flex items-center gap-1.5 shrink-0">
           {isOpen && (
             <span
