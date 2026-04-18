@@ -13,7 +13,7 @@ import MarketFeedCard from "@/components/home/MarketFeedCard";
 import { MarketFeedCardSkeletonGrid } from "@/components/market/MarketCardSkeleton";
 import NewsHeadlines from "@/components/home/NewsHeadlines";
 import { staggerContainer, tabContent } from "@/lib/animations";
-import { TrendingUp, CheckCircle, LayoutGrid, Activity, Zap, Lightbulb } from "lucide-react";
+import { TrendingUp, CheckCircle, LayoutGrid, Activity, Zap, Lightbulb, Bot, ArrowRight } from "lucide-react";
 import { formatEth } from "@/lib/format";
 import type { MarketsListQuery, WsGlobalMessage } from "@rush/shared";
 
@@ -348,28 +348,101 @@ export default function HomePage() {
         <NewsHeadlines />
       </div>
 
-      {/* ---- Propose CTA ---- */}
+      {/* ---- Create Your Market CTA ---- */}
       <div
-        className="mt-8 rounded-2xl p-6 text-center"
-        style={{
-          background: "linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(0,255,136,0.04) 100%)",
-          border: "1px solid rgba(59,130,246,0.12)",
-        }}
+        className="mt-8 rounded-2xl overflow-hidden"
+        style={{ border: "1px solid rgba(255,255,255,0.06)" }}
       >
-        <Lightbulb className="mx-auto mb-2 h-6 w-6" style={{ color: "#3B82F6" }} />
-        <h3 className="text-sm font-bold text-white mb-1">Got a prediction?</h3>
-        <p className="text-xs text-gray-400 mb-3">
-          Propose a market and earn <span style={{ color: "#00ff88" }} className="font-bold">4% of every bet</span> if approved.
-        </p>
-        <a
-          href="/propose"
-          className="inline-flex items-center gap-2 rounded-lg px-5 py-2 text-xs font-bold transition-all hover:scale-105"
-          style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "#3B82F6" }}
-        >
-          <Zap className="h-3.5 w-3.5" />
-          Propose a Market
-        </a>
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 text-center" style={{ background: "linear-gradient(180deg, rgba(0,255,136,0.06) 0%, transparent 100%)" }}>
+          <h2 className="text-xl sm:text-2xl font-black text-white mb-2">
+            Create Your Own Market
+          </h2>
+          <p className="text-sm text-gray-400 max-w-lg mx-auto">
+            Anyone can propose a prediction market. Get approved and earn{" "}
+            <span className="font-bold" style={{ color: "#00ff88" }}>4% of every bet</span>{" "}
+            placed on your market.
+          </p>
+        </div>
+
+        {/* Steps */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-px" style={{ background: "rgba(255,255,255,0.04)" }}>
+          <Step
+            number="1"
+            icon={<Lightbulb className="h-5 w-5" />}
+            title="Propose"
+            description="Submit your question, outcomes, and resolution criteria"
+            color="#3B82F6"
+          />
+          <Step
+            number="2"
+            icon={<CheckCircle className="h-5 w-5" />}
+            title="Get Approved"
+            description="Our team reviews for clarity, fairness, and verifiability"
+            color="#ffc828"
+          />
+          <Step
+            number="3"
+            icon={<TrendingUp className="h-5 w-5" />}
+            title="Earn Fees"
+            description="Your market goes live on-chain. You earn 4% of the pool."
+            color="#00ff88"
+          />
+        </div>
+
+        {/* CTAs */}
+        <div className="px-6 py-5 flex flex-col sm:flex-row items-center justify-center gap-3" style={{ background: "var(--surface)" }}>
+          <a
+            href="/propose"
+            className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold transition-all hover:scale-105"
+            style={{ background: "rgba(0,255,136,0.12)", border: "1px solid rgba(0,255,136,0.3)", color: "#00ff88" }}
+          >
+            <Zap className="h-4 w-4" />
+            Propose a Market
+            <ArrowRight className="h-4 w-4" />
+          </a>
+          <a
+            href="/agents/dashboard"
+            className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold transition-all hover:scale-105"
+            style={{ background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.25)", color: "#3B82F6" }}
+          >
+            <Bot className="h-4 w-4" />
+            Autonomous Agents
+          </a>
+        </div>
+
+        {/* Agent callout */}
+        <div className="px-6 py-3 flex items-center justify-center gap-2 text-[10px] text-gray-500" style={{ background: "rgba(59,130,246,0.03)", borderTop: "1px solid rgba(255,255,255,0.03)" }}>
+          <Bot className="h-3 w-3" style={{ color: "#3B82F6" }} />
+          <span>
+            Build a bot that creates markets automatically.{" "}
+            <a
+              href="https://github.com/rushgamebase-dev/mktpredct/blob/main/AGENT_API.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold hover:text-gray-300"
+              style={{ color: "#3B82F6" }}
+            >
+              Read the Agent API docs
+            </a>
+          </span>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function Step({ number, icon, title, description, color }: {
+  number: string; icon: React.ReactNode; title: string; description: string; color: string;
+}) {
+  return (
+    <div className="px-5 py-4 text-center" style={{ background: "var(--surface)" }}>
+      <div className="flex items-center justify-center gap-2 mb-1.5">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black" style={{ background: `${color}18`, color }}>{number}</span>
+        <span style={{ color }}>{icon}</span>
+      </div>
+      <h4 className="text-sm font-bold text-white mb-0.5">{title}</h4>
+      <p className="text-[10px] text-gray-500 leading-relaxed">{description}</p>
     </div>
   );
 }
