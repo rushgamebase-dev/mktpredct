@@ -44,6 +44,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <a href="/proposals" className="hover:text-gray-400 transition-colors">Proposals</a>
                 <span>·</span>
                 <a href="/propose" className="hover:text-gray-400 transition-colors">Propose a Market</a>
+                <span>·</span>
+                <a href="/agents/dashboard" className="hover:text-gray-400 transition-colors">Agent Dashboard</a>
               </div>
               <p>Prediction markets are speculative. You may lose 100% of your bet. 18+</p>
             </div>
