@@ -3,10 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount } from "wagmi";
 import { useTheme } from "@/hooks/useTheme";
-import { formatAddress } from "@/lib/format";
-import { Sun, Moon, Wallet, LogOut, Zap, Lightbulb } from "lucide-react";
+import { Sun, Moon, Zap, Lightbulb } from "lucide-react";
+import { WalletButton } from "@/components/WalletButton";
 
 // Category filter definitions
 const CATEGORIES = [
@@ -21,37 +21,21 @@ const CATEGORIES = [
 const RUSH_CARS_URL = "https://www.rushgame.vip";
 
 export default function Header() {
-  const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
+  const { isConnected } = useAccount();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [showConnectors, setShowConnectors] = React.useState(false);
-  const dropdownRef = React.useRef<HTMLDivElement>(null);
-
-  // Close connector dropdown on outside click/tap
-  React.useEffect(() => {
-    if (!showConnectors) return;
-    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowConnectors(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
-    };
-  }, [showConnectors]);
-
-  // Open the connector dropdown when any component in the tree requests it
-  // (e.g. the BetForm's "Connect Wallet to Bet" button).
+  // Legacy event: BetForm components dispatch 'rush:open-connect' when they
+  // need the wallet modal. Forward it to a synthetic click on the WalletButton.
   React.useEffect(() => {
     if (isConnected) return;
-    const open = () => setShowConnectors(true);
+    const open = () => {
+      const btn = document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Connect Wallet"]',
+      );
+      btn?.click();
+    };
     window.addEventListener("rush:open-connect", open);
     return () => window.removeEventListener("rush:open-connect", open);
   }, [isConnected]);
@@ -145,63 +129,8 @@ export default function Header() {
             )}
           </button>
 
-          {/* Wallet */}
-          {isConnected && address ? (
-            <div className="flex items-center gap-2">
-              <span
-                className="rounded-lg px-3 py-1.5 text-xs font-mono"
-                style={{
-                  background: "rgba(0,255,136,0.08)",
-                  border: "1px solid rgba(0,255,136,0.2)",
-                  color: "#00ff88",
-                }}
-              >
-                {formatAddress(address)}
-              </span>
-              <button
-                onClick={() => disconnect()}
-                className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-white/5"
-                aria-label="Disconnect wallet"
-              >
-                <LogOut className="h-4 w-4 text-gray-400" />
-              </button>
-            </div>
-          ) : (
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setShowConnectors(!showConnectors)}
-                className="btn-primary flex items-center gap-2 rounded-lg px-4 py-1.5 text-xs font-bold"
-              >
-                <Wallet className="h-3.5 w-3.5" />
-                Connect
-              </button>
-
-              {/* Connector dropdown */}
-              {showConnectors && (
-                <div
-                  className="absolute right-0 top-full mt-2 min-w-[180px] rounded-lg p-2"
-                  style={{
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-                  }}
-                >
-                  {connectors.map((connector) => (
-                    <button
-                      key={connector.uid}
-                      onClick={() => {
-                        connect({ connector });
-                        setShowConnectors(false);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-gray-300 transition-colors hover:bg-white/5"
-                    >
-                      {connector.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Wallet — unified with rushgame.vip */}
+          <WalletButton />
         </div>
       </div>
 
