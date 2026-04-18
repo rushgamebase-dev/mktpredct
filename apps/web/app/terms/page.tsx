@@ -11,92 +11,89 @@ export default function TermsPage() {
         className="mb-4 inline-flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-gray-300"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Voltar
+        Back
       </Link>
 
       <h1 className="text-2xl font-black text-white mb-6">
-        Termos de Uso — Rush Markets
+        Terms of Service — Rush Markets
       </h1>
-      <p className="text-[10px] text-gray-600 mb-6">Versão 1.0 · Atualizado em Abril 2026</p>
+      <p className="text-[10px] text-gray-600 mb-6">Version 1.0 · Updated April 2026</p>
 
       <div className="space-y-6 text-sm text-gray-300 leading-relaxed">
-        <Section title="1. Natureza do serviço">
-          Rush Markets é uma plataforma descentralizada de mercados de predição operando na blockchain Base (Layer 2 da Ethereum).
-          Os mercados permitem que usuários façam apostas especulativas sobre eventos futuros utilizando ETH (Ether).
+        <Section title="1. Nature of Service">
+          Rush Markets is a decentralized prediction market platform operating on the Base blockchain (Ethereum Layer 2).
+          Markets allow users to place speculative bets on future events using ETH (Ether).
           <strong className="block mt-2 text-white">
-            Este serviço NÃO é uma corretora de valores, fundo de investimento, ou instituição financeira.
+            This service is NOT a brokerage, investment fund, or financial institution.
           </strong>
         </Section>
 
-        <Section title="2. Riscos">
+        <Section title="2. Risks">
           <ul className="list-disc list-inside space-y-1 mt-1">
-            <li><strong>Perda total:</strong> Você pode perder 100% do valor apostado em qualquer mercado.</li>
-            <li><strong>Volatilidade:</strong> Os odds mudam em tempo real com base em apostas de outros participantes.</li>
-            <li><strong>Smart contracts:</strong> Os contratos são imutáveis após o deploy. Bugs, embora testados, podem existir.</li>
-            <li><strong>Resolução:</strong> A resolução dos mercados depende de um operador centralizado (signer). Não há oracle descentralizado.</li>
-            <li><strong>Irreversibilidade:</strong> Transações on-chain são irreversíveis. Uma vez enviada, a aposta não pode ser cancelada.</li>
-            <li><strong>Sem proteção off-chain:</strong> Pausas na plataforma NÃO impedem interações diretas com os contratos na Base.</li>
+            <li><strong>Total loss:</strong> You may lose 100% of the amount bet on any market.</li>
+            <li><strong>Volatility:</strong> Odds change in real-time based on other participants&apos; bets.</li>
+            <li><strong>Smart contracts:</strong> Contracts are immutable after deployment. Bugs, although tested for, may exist.</li>
+            <li><strong>Resolution:</strong> Market resolution depends on a centralized operator (signer). There is no decentralized oracle.</li>
+            <li><strong>Irreversibility:</strong> On-chain transactions are irreversible. Once sent, a bet cannot be cancelled.</li>
+            <li><strong>No off-chain protection:</strong> Platform pauses do NOT prevent direct interactions with contracts on Base.</li>
           </ul>
         </Section>
 
-        <Section title="3. Elegibilidade">
-          Ao utilizar a plataforma, você declara ter no mínimo 18 anos de idade e capacidade legal para realizar transações
-          financeiras em sua jurisdição. A plataforma não realiza verificação de identidade (KYC).
+        <Section title="3. Eligibility">
+          By using the platform, you declare that you are at least 18 years old and legally capable of
+          conducting financial transactions in your jurisdiction. The platform does not perform identity verification (KYC).
         </Section>
 
-        <Section title="4. Criação de mercados">
-          Qualquer usuário pode propor a criação de um mercado de predição. Propostas são revisadas e aprovadas
-          manualmente pelo operador da plataforma. Criadores de mercados aprovados recebem uma parcela das taxas
-          de protocolo (fee-share). O criador deve declarar conflitos de interesse e definir critérios objetivos de resolução.
+        <Section title="4. Market Creation">
+          Any user can propose the creation of a prediction market. Proposals are manually reviewed and approved
+          by the platform operator. Creators of approved markets receive a share of protocol fees (fee-share).
+          Creators must declare conflicts of interest and define objective resolution criteria.
         </Section>
 
-        <Section title="5. Taxas">
-          O protocolo cobra uma taxa de 5% sobre o pool total de cada mercado no momento da resolução.
-          Desta taxa, até 80% pode ser direcionada ao criador do mercado (fee-share). A taxa é calculada e
-          cobrada automaticamente pelo smart contract e não pode ser alterada após o deploy.
+        <Section title="5. Fees">
+          The protocol charges a 5% fee on the total pool of each market at the time of resolution.
+          Of this fee, up to 80% may be directed to the market creator (fee-share). The fee is calculated
+          and collected automatically by the smart contract and cannot be changed after deployment.
         </Section>
 
-        <Section title="6. Resolução e disputas">
-          Mercados são resolvidos pelo operador da plataforma com base nos critérios de resolução definidos
-          na proposta. Não existe mecanismo formal de apelação on-chain. O operador pode pausar ou marcar
-          mercados como "em disputa" caso identifique irregularidades.
+        <Section title="6. Resolution and Disputes">
+          Markets are resolved by the platform operator based on the resolution criteria defined
+          in the proposal. There is no formal on-chain appeal mechanism. The operator may pause or flag
+          markets as &quot;disputed&quot; if irregularities are identified.
         </Section>
 
-        <Section title="7. Anti-abuso">
-          A plataforma monitora automaticamente comportamentos suspeitos, incluindo:
+        <Section title="7. Anti-Abuse">
+          The platform automatically monitors suspicious behavior, including:
           <ul className="list-disc list-inside space-y-1 mt-1">
-            <li>Auto-aposta (proposer apostando no próprio mercado)</li>
-            <li>Apostas em ambos os lados (round-trip)</li>
-            <li>Concentração de volume em uma única carteira</li>
+            <li>Self-betting (proposer betting on their own market)</li>
+            <li>Round-trip betting (betting on both sides)</li>
+            <li>Volume concentration in a single wallet</li>
           </ul>
-          Atividades abusivas podem resultar no bloqueio de pagamentos de fee-share e cancelamento de mercados.
+          Abusive activities may result in blocked fee-share payments and market cancellation.
         </Section>
 
-        <Section title="8. Isenção de responsabilidade">
+        <Section title="8. Disclaimer">
           <strong className="text-white">
-            A plataforma é fornecida "como está" (as-is), sem garantias de qualquer tipo.
+            The platform is provided &quot;as-is&quot;, without warranties of any kind.
           </strong>{" "}
-          O operador não garante disponibilidade contínua, resolução correta de todos os mercados,
-          ou proteção contra perdas financeiras. O uso da plataforma é por sua conta e risco.
+          The operator does not guarantee continuous availability, correct resolution of all markets,
+          or protection against financial losses. Use of the platform is at your own risk.
         </Section>
 
-        <Section title="9. Jurisdição">
-          Este serviço não é operado por empresa sediada no Brasil. Não é regulado pela CVM,
-          Banco Central, SUSEP ou qualquer órgão regulador brasileiro. Mercados relacionados a
-          eleições brasileiras ou eventos esportivos regulados pela Lei 14.790/2023 não são
-          permitidos na plataforma.
+        <Section title="9. Jurisdiction">
+          This service is not operated by a company based in any specific jurisdiction. It is not regulated
+          by any financial regulatory authority. Markets related to regulated events in your jurisdiction
+          may not be permitted on the platform.
         </Section>
 
-        <Section title="10. Aceitação">
-          Ao conectar sua carteira e interagir com a plataforma, você declara ter lido, compreendido
-          e aceito integralmente estes termos. O aceite é registrado com assinatura criptográfica (EIP-191)
-          e timestamp para fins de auditoria.
+        <Section title="10. Acceptance">
+          By connecting your wallet and interacting with the platform, you declare that you have read,
+          understood, and fully accepted these terms. Acceptance is recorded with a cryptographic signature
+          (EIP-191) and timestamp for audit purposes.
         </Section>
       </div>
 
-      <div className="mt-8 mb-12 text-center text-[10px] text-gray-600">
-        Dúvidas: maumcrez@gmail.com
-      </div>
+      <div className="mt-8 mb-12" />
     </div>
   );
 }
