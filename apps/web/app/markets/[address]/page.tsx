@@ -579,6 +579,18 @@ export default function MarketDetailPage() {
             </div>
           </div>
 
+          {/* Resolution criteria — how this market is resolved */}
+          {(market as any).resolutionCriteria && (
+            <div className="card p-4">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">
+                How this market is resolved
+              </h3>
+              <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                {(market as any).resolutionCriteria}
+              </p>
+            </div>
+          )}
+
           {/* Community comments */}
           <MarketComments
             market={market}

@@ -183,6 +183,17 @@ export default function BetForm({
 
   return (
     <div className="card p-4">
+      {/* Risk disclaimer banner */}
+      <div className="mb-3 rounded-lg px-3 py-2 flex items-start gap-2"
+        style={{ background: "rgba(255,200,40,0.06)", border: "1px solid rgba(255,200,40,0.12)" }}>
+        <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: "#ffc828" }} />
+        <p className="text-[10px] text-gray-500 leading-relaxed">
+          Prediction markets are speculative. You may lose 100% of your bet.
+          Bets are irreversible on-chain.{" "}
+          <a href="/terms" target="_blank" className="underline text-gray-400">Terms</a>
+        </p>
+      </div>
+
       <h3 className="mb-3 text-sm font-bold text-gray-300">Place Bet</h3>
 
       <form onSubmit={handleSubmit}>

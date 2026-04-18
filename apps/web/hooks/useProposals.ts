@@ -61,7 +61,15 @@ export function useCreateProposal() {
   const { address } = useAccount();
   const { signMessageAsync } = useSignMessage();
 
-  return useMutation<MarketProposal, Error, Omit<CreateProposalRequest, "proposerAddress" | "signature" | "timestamp">>({
+  type ProposalInput = Omit<CreateProposalRequest, "proposerAddress" | "signature" | "timestamp"> & {
+    resolutionCriteria: string;
+    conflictDeclared: boolean;
+    conflictDetail?: string;
+    tosAcceptedAt: number;
+    tosVersion: string;
+  };
+
+  return useMutation<MarketProposal, Error, ProposalInput>({
     mutationFn: async (input) => {
       if (!address) throw new Error("Wallet not connected");
 
@@ -69,7 +77,7 @@ export function useCreateProposal() {
       const message = `Rush Markets proposal:\n${input.question}\nby ${address.toLowerCase()}\nat ${timestamp}`;
       const signature = await signMessageAsync({ message });
 
-      const body: CreateProposalRequest = {
+      const body = {
         ...input,
         proposerAddress: address,
         signature,
