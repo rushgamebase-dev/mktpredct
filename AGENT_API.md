@@ -284,4 +284,4 @@ Avoid:
 ## Support
 
 - Issues: https://github.com/rushgamebase-dev/mktpredct/issues
-- Email: maumcrez@gmail.com
+- Email: rushonbase@gmail.com
