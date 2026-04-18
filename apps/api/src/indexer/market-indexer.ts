@@ -1,5 +1,5 @@
 import { eq, sql, and } from 'drizzle-orm'
-import { markets, bets, claims, fees, syncState, marketStats, userStats, proposerPayouts } from '@rush/shared/db/schema'
+import { markets, bets, claims, fees, syncState, marketStats, userStats, proposerPayouts, washFlags } from '@rush/shared/db/schema'
 import { MarketABI, computeOdds } from '@rush/shared'
 import type { WsServerMessage, WsGlobalMessage } from '@rush/shared'
 import { db } from '../db.js'
@@ -150,6 +150,43 @@ export async function processMarketEvent(
         console.error('[Indexer] Stats update error:', e)
       }
 
+      // --- Wash trading detection ---
+      try {
+        // 1. Self-bet: proposer betting on their own market
+        if (market.proposerAddress && userAddr === market.proposerAddress) {
+          await db.insert(washFlags).values({
+            marketAddress: market.address,
+            suspectAddress: userAddr,
+            reason: 'self_bet',
+            detail: { amount, outcomeIndex: outcomeIdx, txHash },
+            severity: BigInt(amount) >= BigInt(market.minPoolForFeeShare ?? '10000000000000000') / 2n ? 'high' : 'medium',
+            createdAt: timestamp,
+          }).onConflictDoNothing()
+          console.warn(`[WashDetect] self_bet: proposer ${userAddr.slice(0, 10)} bet on own market ${market.address.slice(0, 10)}`)
+        }
+
+        // 2. Round-trip: same user betting on both sides of binary market
+        if (market.outcomeCount === 2) {
+          const otherSide = outcomeIdx === 0 ? 1 : 0
+          const existing = await db.select({ id: bets.id }).from(bets)
+            .where(and(eq(bets.marketAddress, market.address), eq(bets.user, userAddr), eq(bets.outcomeIndex, otherSide)))
+            .limit(1)
+          if (existing.length > 0) {
+            await db.insert(washFlags).values({
+              marketAddress: market.address,
+              suspectAddress: userAddr,
+              reason: 'round_trip',
+              detail: { betBothSides: true, txHash },
+              severity: 'high',
+              createdAt: timestamp,
+            }).onConflictDoNothing()
+            console.warn(`[WashDetect] round_trip: ${userAddr.slice(0, 10)} bet both sides of ${market.address.slice(0, 10)}`)
+          }
+        }
+      } catch (e) {
+        console.error('[WashDetect] Error:', e)
+      }
+
       break
     }
 
@@ -284,9 +321,12 @@ export async function processMarketEvent(
 
       // Fee-share: if this market was created via a proposal, record the
       // proposer's cut. Idempotent via UNIQUE(feeEventId).
+      // Check minimum pool threshold before marking payout as eligible.
       if (feeRow && market.proposerAddress && market.feeShareBps > 0) {
         const feeWei = BigInt(args.amount.toString())
         const share = (feeWei * BigInt(market.feeShareBps)) / 10000n
+        const minPool = BigInt(market.minPoolForFeeShare ?? '10000000000000000')
+        const poolMet = BigInt(market.totalPool) >= minPool
         if (share > 0n) {
           await db
             .insert(proposerPayouts)
@@ -296,10 +336,11 @@ export async function processMarketEvent(
               feeEventId: feeRow.id,
               feeAmount: feeWei.toString(),
               proposerShare: share.toString(),
+              minimumPoolMet: poolMet,
               createdAt: timestamp,
             })
             .onConflictDoNothing()
-          console.log(`[Indexer] Fee share: ${share} wei → ${market.proposerAddress.slice(0, 10)}... (${market.feeShareBps}bps of ${feeWei} wei)`)
+          console.log(`[Indexer] Fee share: ${share} wei → ${market.proposerAddress.slice(0, 10)}... (${market.feeShareBps}bps of ${feeWei} wei) poolMet=${poolMet}`)
         }
       }
       break

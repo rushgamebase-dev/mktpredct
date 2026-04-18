@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { eq, and, count } from 'drizzle-orm'
-import { agents, marketProposals } from '@rush/shared/db/schema'
+import { agents, marketProposals, platformControls } from '@rush/shared/db/schema'
 import type { MarketProposal } from '@rush/shared'
 import { db } from '../db.js'
 import { agentAuth } from '../middleware/agent-auth.js'
@@ -50,6 +50,12 @@ const perAgentLimit = rateLimitByKey(10, 10 / 3600, async (c: any) => {
 app.post('/proposals', perAgentLimit as any, async (c) => {
 	const agent = c.get('agent')
 
+	// Check platform pause
+	const [pauseCtrl] = await db.select().from(platformControls).where(eq(platformControls.key, 'proposals_paused')).limit(1)
+	if (pauseCtrl?.value) {
+		return c.json({ code: 'PROPOSALS_PAUSED', detail: 'Proposals are temporarily paused' }, 503)
+	}
+
 	const body = await c.req.json<{
 		question: string
 		labels: string[]
@@ -58,9 +64,9 @@ app.post('/proposals', perAgentLimit as any, async (c) => {
 		marketType?: string
 		sourceConfig?: Record<string, unknown>
 		rationale?: string
+		resolutionCriteria: string
 	}>()
 
-	// Validation — same rules as human proposals
 	if (!body.question || body.question.length < 3 || body.question.length > MAX_QUESTION_LEN) {
 		return c.json({ code: 'INVALID_QUESTION', detail: `Question must be 3-${MAX_QUESTION_LEN} characters` }, 400)
 	}
@@ -90,6 +96,10 @@ app.post('/proposals', perAgentLimit as any, async (c) => {
 	if (body.rationale && body.rationale.length > MAX_RATIONALE_LEN) {
 		return c.json({ code: 'RATIONALE_TOO_LONG', detail: `Rationale max ${MAX_RATIONALE_LEN} characters` }, 400)
 	}
+	// Resolution criteria: mandatory for agents too
+	if (!body.resolutionCriteria || body.resolutionCriteria.length < 20 || body.resolutionCriteria.length > 2000) {
+		return c.json({ code: 'INVALID_RESOLUTION_CRITERIA', detail: 'resolutionCriteria is required (20-2000 chars). Describe how this market will be resolved.' }, 400)
+	}
 
 	const [inserted] = await db
 		.insert(marketProposals)
@@ -102,6 +112,7 @@ app.post('/proposals', perAgentLimit as any, async (c) => {
 			marketType: (body.marketType as 'classic' | 'counter' | 'price' | 'event') ?? 'classic',
 			sourceConfig: body.sourceConfig ?? {},
 			rationale: body.rationale?.trim() || null,
+			resolutionCriteria: body.resolutionCriteria.trim(),
 			agentId: agent.id,
 			createdAt: now,
 		})

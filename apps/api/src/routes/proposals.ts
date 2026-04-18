@@ -1,7 +1,8 @@
+import { createHash } from 'node:crypto'
 import { Hono } from 'hono'
 import { and, eq, desc, count, sql } from 'drizzle-orm'
 import { verifyMessage, isAddress } from 'viem'
-import { marketProposals, proposerPayouts } from '@rush/shared/db/schema'
+import { marketProposals, proposerPayouts, platformControls } from '@rush/shared/db/schema'
 import type {
 	CreateProposalRequest,
 	MarketProposal,
@@ -16,6 +17,9 @@ const MAX_QUESTION_LEN = 200
 const MAX_LABEL_LEN = 50
 const MAX_RATIONALE_LEN = 1000
 const MAX_DEADLINE_DAYS = 90
+const MIN_RESOLUTION_CRITERIA_LEN = 20
+const MAX_RESOLUTION_CRITERIA_LEN = 2000
+const TOS_CURRENT_VERSION = '1.0'
 
 const perWalletLimit = rateLimitByKey(3, 3 / 3600, async (c) => {
 	try {
@@ -142,8 +146,21 @@ app.get('/:id', async (c) => {
 
 // POST /api/proposals
 app.post('/', perWalletLimit, async (c) => {
-	const body = await c.req.json<CreateProposalRequest>()
+	// Check platform pause
+	const [pauseCtrl] = await db.select().from(platformControls).where(eq(platformControls.key, 'proposals_paused')).limit(1)
+	if (pauseCtrl?.value) {
+		return c.json({ error: 'Proposals are temporarily paused' }, 503)
+	}
 
+	const body = await c.req.json<CreateProposalRequest & {
+		resolutionCriteria: string
+		tosAcceptedAt: number
+		tosVersion: string
+		conflictDeclared: boolean
+		conflictDetail?: string
+	}>()
+
+	// --- Existing validations ---
 	if (!body.question || body.question.length < 3 || body.question.length > MAX_QUESTION_LEN) {
 		return c.json({ error: `Question must be 3-${MAX_QUESTION_LEN} characters` }, 400)
 	}
@@ -157,8 +174,8 @@ app.post('/', perWalletLimit, async (c) => {
 		return c.json({ error: 'deadline is required (unix timestamp)' }, 400)
 	}
 	const now = Math.floor(Date.now() / 1000)
-	if (body.deadline <= now) {
-		return c.json({ error: 'deadline must be in the future' }, 400)
+	if (body.deadline <= now + 3600) {
+		return c.json({ error: 'deadline must be at least 1 hour in the future' }, 400)
 	}
 	if (body.deadline > now + MAX_DEADLINE_DAYS * 86400) {
 		return c.json({ error: `deadline must be within ${MAX_DEADLINE_DAYS} days` }, 400)
@@ -168,7 +185,7 @@ app.post('/', perWalletLimit, async (c) => {
 		return c.json({ error: 'gracePeriod must be 1-30 days in seconds' }, 400)
 	}
 	if (body.marketType && !VALID_MARKET_TYPES.has(body.marketType)) {
-		return c.json({ error: `Invalid marketType` }, 400)
+		return c.json({ error: 'Invalid marketType' }, 400)
 	}
 	if (body.rationale && body.rationale.length > MAX_RATIONALE_LEN) {
 		return c.json({ error: `Rationale max ${MAX_RATIONALE_LEN} characters` }, 400)
@@ -186,6 +203,33 @@ app.post('/', perWalletLimit, async (c) => {
 		return c.json({ error: 'Signature expired (>5 min)' }, 401)
 	}
 
+	// --- Safety validations (NEW) ---
+
+	// Resolution criteria: mandatory, 20-2000 chars
+	if (!body.resolutionCriteria || body.resolutionCriteria.length < MIN_RESOLUTION_CRITERIA_LEN || body.resolutionCriteria.length > MAX_RESOLUTION_CRITERIA_LEN) {
+		return c.json({ error: `resolutionCriteria is required (${MIN_RESOLUTION_CRITERIA_LEN}-${MAX_RESOLUTION_CRITERIA_LEN} chars). Describe how this market will be resolved.` }, 400)
+	}
+
+	// ToS acceptance: mandatory for human proposals
+	if (!body.tosAcceptedAt || typeof body.tosAcceptedAt !== 'number') {
+		return c.json({ error: 'tosAcceptedAt is required (unix timestamp of ToS acceptance)' }, 400)
+	}
+	if (Math.abs(now - body.tosAcceptedAt) > 600) {
+		return c.json({ error: 'ToS acceptance expired (>10 min). Please re-accept.' }, 400)
+	}
+	if (body.tosVersion !== TOS_CURRENT_VERSION) {
+		return c.json({ error: `tosVersion must be "${TOS_CURRENT_VERSION}"` }, 400)
+	}
+
+	// Conflict of interest: must be explicitly declared
+	if (body.conflictDeclared === undefined || body.conflictDeclared === null) {
+		return c.json({ error: 'conflictDeclared is required (true or false)' }, 400)
+	}
+	if (body.conflictDeclared && (!body.conflictDetail || body.conflictDetail.length < 10)) {
+		return c.json({ error: 'conflictDetail is required when conflictDeclared is true (min 10 chars)' }, 400)
+	}
+
+	// --- Signature verification ---
 	const message = `Rush Markets proposal:\n${body.question}\nby ${body.proposerAddress.toLowerCase()}\nat ${body.timestamp}`
 	try {
 		const valid = await verifyMessage({
@@ -198,6 +242,10 @@ app.post('/', perWalletLimit, async (c) => {
 		return c.json({ error: 'Invalid signature' }, 401)
 	}
 
+	// IP hash for audit trail
+	const ip = c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || c.req.header('x-real-ip') || 'unknown'
+	const ipHash = createHash('sha256').update(ip).digest('hex')
+
 	const [inserted] = await db
 		.insert(marketProposals)
 		.values({
@@ -209,6 +257,12 @@ app.post('/', perWalletLimit, async (c) => {
 			marketType: body.marketType ?? 'classic',
 			sourceConfig: body.sourceConfig ?? {},
 			rationale: body.rationale?.trim() || null,
+			resolutionCriteria: body.resolutionCriteria.trim(),
+			tosAcceptedAt: body.tosAcceptedAt,
+			tosVersion: body.tosVersion,
+			conflictDeclared: body.conflictDeclared,
+			conflictDetail: body.conflictDeclared ? body.conflictDetail?.trim() || null : null,
+			ipHash,
 			createdAt: now,
 		})
 		.returning()

@@ -8,7 +8,7 @@ import { generateAgentKey } from '../middleware/agent-auth.js'
 import { walletClient, publicClient } from '../services/chain.js'
 import { env } from '../env.js'
 import { db } from '../db.js'
-import { agents, markets, marketProposals, proposerPayouts } from '@rush/shared/db/schema'
+import { agents, markets, marketProposals, proposerPayouts, washFlags, platformControls } from '@rush/shared/db/schema'
 import { broadcast } from '../ws/broadcast.js'
 
 // feeShareBps is applied to the collected fee amount (5% of pool), not the
@@ -24,6 +24,7 @@ async function updateMarketAfterApprove(
 	feeShareBps: number,
 	marketType: string,
 	sourceConfig: unknown,
+	resolutionCriteria: string,
 ): Promise<void> {
 	const addr = marketAddress.toLowerCase()
 	for (let i = 0; i < 10; i++) {
@@ -35,6 +36,7 @@ async function updateMarketAfterApprove(
 					feeShareBps,
 					marketType: marketType as 'classic' | 'counter' | 'price' | 'event',
 					sourceConfig: sourceConfig ?? {},
+					resolutionCriteria,
 				}).where(eq(markets.address, addr))
 				console.log(`[admin-proposals] Market ${addr.slice(0, 10)}... metadata updated (proposer=${proposerAddress.slice(0, 10)}, share=${feeShareBps}bps)`)
 				return
@@ -58,10 +60,32 @@ app.post('/:id/approve', async (c) => {
 	if (!proposal) return c.json({ error: 'Proposal not found' }, 404)
 	if (proposal.status !== 'pending') return c.json({ error: `Proposal already ${proposal.status}` }, 409)
 
-	const body = await c.req.json<ApproveProposalRequest>().catch(() => ({} as ApproveProposalRequest))
+	type ApproveBody = {
+		feeShareBps?: number
+		adminNotes?: string
+		approvalChecklist?: { clarity: boolean; criteria: boolean; conflict: boolean; tos: boolean; source: boolean; legal: boolean }
+	}
+	const body: ApproveBody = await c.req.json<ApproveBody>().catch(() => ({}))
+
 	const feeShareBps = body.feeShareBps ?? DEFAULT_FEE_SHARE_BPS
 	if (feeShareBps < 0 || feeShareBps > 9500) {
 		return c.json({ error: 'feeShareBps must be 0-9500 (protocol keeps at least 5%)' }, 400)
+	}
+
+	// Approval checklist: all 6 fields must be true
+	const cl = body.approvalChecklist
+	if (!cl || !cl.clarity || !cl.criteria || !cl.conflict || !cl.tos || !cl.source || !cl.legal) {
+		return c.json({ error: 'approvalChecklist is required with all 6 fields set to true: clarity, criteria, conflict, tos, source, legal' }, 400)
+	}
+
+	// Resolution criteria must exist on the proposal
+	if (!proposal.resolutionCriteria || proposal.resolutionCriteria.length < 20) {
+		return c.json({ error: 'Cannot approve: proposal has no resolutionCriteria (min 20 chars)' }, 422)
+	}
+
+	// ToS must have been accepted (human proposals)
+	if (!proposal.agentId && !proposal.tosAcceptedAt) {
+		return c.json({ error: 'Cannot approve: proposer has not accepted ToS' }, 422)
 	}
 
 	const factoryAddress = env.FACTORY_ADDRESS as `0x${string}`
@@ -126,17 +150,20 @@ app.post('/:id/approve', async (c) => {
 		status: 'approved',
 		marketAddress: marketAddress.toLowerCase(),
 		adminNotes: body.adminNotes || null,
+		approvalChecklist: cl,
+		reviewedBy: 'admin',
 		reviewedAt: now,
 	}).where(eq(marketProposals.id, id))
 
-	// Update market row with proposer info — await so fee-share metadata is
-	// written BEFORE the indexer processes FeeWithdrawn for fast-resolving markets.
+	// Update market row with proposer info + resolutionCriteria — await so
+	// fee-share metadata is written BEFORE the indexer processes FeeWithdrawn.
 	await updateMarketAfterApprove(
 		marketAddress,
 		proposal.proposerAddress,
 		feeShareBps,
 		proposal.marketType ?? 'classic',
 		proposal.sourceConfig,
+		proposal.resolutionCriteria ?? '',
 	)
 
 	broadcast.emit('__global', {
@@ -161,8 +188,8 @@ app.post('/:id/reject', async (c) => {
 	if (proposal.status !== 'pending') return c.json({ error: `Proposal already ${proposal.status}` }, 409)
 
 	const body = await c.req.json<RejectProposalRequest>()
-	if (!body.reason || body.reason.length < 1 || body.reason.length > 500) {
-		return c.json({ error: 'reason is required (1-500 chars)' }, 400)
+	if (!body.reason || body.reason.length < 10 || body.reason.length > 500) {
+		return c.json({ error: 'reason is required (10-500 chars)' }, 400)
 	}
 
 	const now = Math.floor(Date.now() / 1000)
@@ -222,13 +249,32 @@ app.post('/payouts/send', async (c) => {
 		return c.json({ error: 'amount must be positive' }, 400)
 	}
 
-	// Only count PENDING payouts — exclude already-paid
+	// Check platform pause
+	const [pauseCtrl] = await db.select().from(platformControls).where(eq(platformControls.key, 'payouts_paused')).limit(1)
+	if (pauseCtrl?.value) {
+		return c.json({ error: 'Payouts are temporarily paused' }, 503)
+	}
+
+	// Check for unresolved high-severity wash flags on any market of this proposer
+	const [highFlags] = await db
+		.select({ ct: sql<number>`COUNT(*)` })
+		.from(washFlags)
+		.where(and(
+			eq(washFlags.suspectAddress, addr),
+			eq(washFlags.severity, 'high'),
+			eq(washFlags.dismissed, false),
+		))
+	if ((highFlags?.ct ?? 0) > 0) {
+		return c.json({ error: 'Payout blocked: unresolved high-severity wash trading flags exist for this address. Review in /api/admin/controls/flags' }, 403)
+	}
+
+	// Only count PENDING + minimumPoolMet payouts
 	const [pending] = await db
 		.select({
 			total: sql<string>`CAST(COALESCE(SUM(CAST(${proposerPayouts.proposerShare} AS NUMERIC)), 0) AS TEXT)`,
 		})
 		.from(proposerPayouts)
-		.where(and(eq(proposerPayouts.proposerAddress, addr), eq(proposerPayouts.status, 'pending')))
+		.where(and(eq(proposerPayouts.proposerAddress, addr), eq(proposerPayouts.status, 'pending'), eq(proposerPayouts.minimumPoolMet, true)))
 
 	const totalPending = BigInt(pending?.total ?? '0')
 	if (totalPending < amount) {

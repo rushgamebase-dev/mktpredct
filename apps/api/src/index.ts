@@ -24,6 +24,8 @@ import proposalsRoutes from './routes/proposals.js'
 import adminProposalsRoutes from './routes/admin-proposals.js'
 import agentRoutes from './routes/agent.js'
 import ogRoutes from './routes/og.js'
+import adminControlsRoutes from './routes/admin-controls.js'
+import tosRoutes from './routes/tos.js'
 
 const app = new Hono()
 
@@ -57,6 +59,8 @@ app.route('/api/proposals', proposalsRoutes)
 app.route('/api/admin/proposals', adminProposalsRoutes)
 app.route('/api/agent', agentRoutes)
 app.route('/api/og', ogRoutes)
+app.route('/api/admin/controls', adminControlsRoutes)
+app.route('/api/tos', tosRoutes)
 
 // Start HTTP server
 const server = serve(

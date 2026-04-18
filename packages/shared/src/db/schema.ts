@@ -40,6 +40,12 @@ export const markets = pgTable(
 		sourceConfig: jsonb('source_config').default('{}'),
 		proposerAddress: varchar('proposer_address', { length: 42 }),
 		feeShareBps: integer('fee_share_bps').notNull().default(0),
+		resolutionCriteria: text('resolution_criteria'),
+		minPoolForFeeShare: text('min_pool_for_fee_share').notNull().default('10000000000000000'),
+		disputeFlag: boolean('dispute_flag').notNull().default(false),
+		disputeReason: text('dispute_reason'),
+		disputedAt: bigint('disputed_at', { mode: 'number' }),
+		disputedBy: varchar('disputed_by', { length: 42 }),
 	},
 	(table) => [
 		index('idx_markets_status').on(table.status),
@@ -174,11 +180,19 @@ export const marketProposals = pgTable('market_proposals', {
 	marketType: marketTypeEnum('market_type').notNull().default('classic'),
 	sourceConfig: jsonb('source_config').default('{}'),
 	rationale: text('rationale'),
+	resolutionCriteria: text('resolution_criteria').notNull().default(''),
 	status: proposalStatusEnum('status').notNull().default('pending'),
 	rejectReason: text('reject_reason'),
 	marketAddress: varchar('market_address', { length: 42 }),
 	adminNotes: text('admin_notes'),
 	agentId: integer('agent_id'),
+	tosAcceptedAt: bigint('tos_accepted_at', { mode: 'number' }),
+	tosVersion: varchar('tos_version', { length: 16 }),
+	conflictDeclared: boolean('conflict_declared'),
+	conflictDetail: text('conflict_detail'),
+	ipHash: varchar('ip_hash', { length: 64 }),
+	approvalChecklist: jsonb('approval_checklist'),
+	reviewedBy: varchar('reviewed_by', { length: 42 }),
 	createdAt: bigint('created_at', { mode: 'number' }).notNull(),
 	reviewedAt: bigint('reviewed_at', { mode: 'number' }),
 }, (table) => [
@@ -208,6 +222,7 @@ export const proposerPayouts = pgTable('proposer_payouts', {
 	feeAmount: text('fee_amount').notNull(),
 	proposerShare: text('proposer_share').notNull(),
 	status: varchar('status', { length: 16 }).notNull().default('pending'),
+	minimumPoolMet: boolean('minimum_pool_met').notNull().default(false),
 	payoutTxHash: varchar('payout_tx_hash', { length: 66 }),
 	createdAt: bigint('created_at', { mode: 'number' }).notNull(),
 	paidAt: bigint('paid_at', { mode: 'number' }),
@@ -216,3 +231,38 @@ export const proposerPayouts = pgTable('proposer_payouts', {
 	index('idx_payouts_status').on(table.status),
 	uniqueIndex('idx_payouts_fee_event').on(table.feeEventId),
 ])
+
+export const tosAcceptances = pgTable('tos_acceptances', {
+	id: serial('id').primaryKey(),
+	userAddress: varchar('user_address', { length: 42 }).notNull(),
+	tosVersion: varchar('tos_version', { length: 16 }).notNull(),
+	acceptedAt: bigint('accepted_at', { mode: 'number' }).notNull(),
+	ipHash: varchar('ip_hash', { length: 64 }),
+	signature: text('signature'),
+}, (table) => [
+	uniqueIndex('idx_tos_user_version').on(table.userAddress, table.tosVersion),
+])
+
+export const washFlags = pgTable('wash_flags', {
+	id: serial('id').primaryKey(),
+	marketAddress: varchar('market_address', { length: 42 }).notNull(),
+	suspectAddress: varchar('suspect_address', { length: 42 }).notNull(),
+	reason: varchar('reason', { length: 64 }).notNull(),
+	detail: jsonb('detail'),
+	severity: varchar('severity', { length: 16 }).notNull(),
+	createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+	reviewedAt: bigint('reviewed_at', { mode: 'number' }),
+	reviewedBy: varchar('reviewed_by', { length: 42 }),
+	dismissed: boolean('dismissed').notNull().default(false),
+}, (table) => [
+	index('idx_wash_flags_market').on(table.marketAddress),
+	index('idx_wash_flags_severity').on(table.severity),
+])
+
+export const platformControls = pgTable('platform_controls', {
+	key: varchar('key', { length: 64 }).primaryKey(),
+	value: boolean('value').notNull().default(false),
+	reason: text('reason'),
+	updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
+	updatedBy: varchar('updated_by', { length: 42 }).notNull(),
+})
