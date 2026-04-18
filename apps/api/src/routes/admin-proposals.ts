@@ -1,8 +1,17 @@
 import { Hono } from 'hono'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, count, desc, eq, sql } from 'drizzle-orm'
 import { isAddress, parseEventLogs } from 'viem'
 import { MarketFactoryABI } from '@rush/shared'
-import type { ApproveProposalRequest, ApproveProposalResponse, RejectProposalRequest, ProposerPayoutsResponse, ProposerPayoutSummary } from '@rush/shared'
+import type {
+	AdminMarketProposal,
+	AdminProposalsListResponse,
+	ApprovalChecklist,
+	ApproveProposalRequest,
+	ApproveProposalResponse,
+	RejectProposalRequest,
+	ProposerPayoutsResponse,
+	ProposerPayoutSummary,
+} from '@rush/shared'
 import { adminAuth } from '../middleware/auth.js'
 import { generateAgentKey } from '../middleware/agent-auth.js'
 import { walletClient, publicClient } from '../services/chain.js'
@@ -17,6 +26,65 @@ const DEFAULT_FEE_SHARE_BPS = 8000
 
 const app = new Hono()
 app.use('/*', adminAuth)
+
+// GET /api/admin/proposals — full proposal listing for the admin review UI.
+// Unlike the public /api/proposals route, this returns resolutionCriteria,
+// tosAcceptedAt, agentId and other fields the admin needs before approving.
+app.get('/', async (c) => {
+	const page = Math.max(1, Number(c.req.query('page') || '1'))
+	const pageSize = Math.min(100, Math.max(1, Number(c.req.query('pageSize') || '50')))
+	const status = c.req.query('status') || 'pending'
+	const offset = (page - 1) * pageSize
+
+	const filter = status !== 'all' && ['pending', 'approved', 'rejected'].includes(status)
+		? eq(marketProposals.status, status as 'pending' | 'approved' | 'rejected')
+		: undefined
+
+	const baseQuery = db.select().from(marketProposals)
+	const baseCount = db.select({ total: count() }).from(marketProposals)
+	const listQuery = filter ? baseQuery.where(filter) : baseQuery
+	const countQuery = filter ? baseCount.where(filter) : baseCount
+
+	const [rows, countResult] = await Promise.all([
+		listQuery.orderBy(desc(marketProposals.createdAt)).limit(pageSize).offset(offset),
+		countQuery,
+	])
+
+	const proposals: AdminMarketProposal[] = rows.map((row) => ({
+		id: row.id,
+		proposerAddress: row.proposerAddress,
+		question: row.question,
+		labels: row.labels as string[],
+		deadline: row.deadline,
+		gracePeriod: row.gracePeriod,
+		marketType: (row.marketType ?? 'classic') as AdminMarketProposal['marketType'],
+		sourceConfig: (row.sourceConfig as Record<string, unknown>) ?? null,
+		rationale: row.rationale,
+		status: row.status as AdminMarketProposal['status'],
+		rejectReason: row.rejectReason,
+		marketAddress: row.marketAddress,
+		createdAt: row.createdAt,
+		reviewedAt: row.reviewedAt,
+		// admin-only fields
+		resolutionCriteria: row.resolutionCriteria ?? '',
+		agentId: row.agentId ?? null,
+		tosAcceptedAt: row.tosAcceptedAt ?? null,
+		tosVersion: row.tosVersion ?? null,
+		conflictDeclared: row.conflictDeclared ?? null,
+		conflictDetail: row.conflictDetail ?? null,
+		approvalChecklist: (row.approvalChecklist as ApprovalChecklist | null) ?? null,
+		reviewedBy: row.reviewedBy ?? null,
+		adminNotes: row.adminNotes ?? null,
+	}))
+
+	const response: AdminProposalsListResponse = {
+		proposals,
+		total: countResult[0]?.total ?? 0,
+		page,
+		pageSize,
+	}
+	return c.json(response)
+})
 
 async function updateMarketAfterApprove(
 	marketAddress: string,

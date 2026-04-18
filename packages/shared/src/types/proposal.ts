@@ -54,10 +54,41 @@ export interface ProposalsListResponse {
 	pageSize: number
 }
 
+// GET /api/admin/proposals — full proposal payload for admin UI (includes
+// fields the public list intentionally omits).
+export interface AdminMarketProposal extends MarketProposal {
+	resolutionCriteria: string
+	agentId: number | null
+	tosAcceptedAt: number | null
+	tosVersion: string | null
+	conflictDeclared: boolean | null
+	conflictDetail: string | null
+	approvalChecklist: ApprovalChecklist | null
+	reviewedBy: string | null
+	adminNotes: string | null
+}
+
+export interface AdminProposalsListResponse {
+	proposals: AdminMarketProposal[]
+	total: number
+	page: number
+	pageSize: number
+}
+
+export interface ApprovalChecklist {
+	clarity: boolean
+	criteria: boolean
+	conflict: boolean
+	tos: boolean
+	source: boolean
+	legal: boolean
+}
+
 // POST /api/admin/proposals/:id/approve
 export interface ApproveProposalRequest {
 	feeShareBps?: number
 	adminNotes?: string
+	approvalChecklist: ApprovalChecklist
 }
 
 export interface ApproveProposalResponse {
