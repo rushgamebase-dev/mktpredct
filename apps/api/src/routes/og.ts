@@ -208,11 +208,11 @@ app.get('/:address', async (c) => {
 	})
 	const png = resvg.render().asPng()
 
-	return new Response(png, {
-		headers: {
-			'Content-Type': 'image/png',
-			'Cache-Control': 'public, max-age=300, s-maxage=300',
-		},
+	// Use c.body() so the handler's return type is consistent with c.text() above.
+	// Returning a raw Response here confuses Hono's overload inference and fails type-check.
+	return c.body(png, 200, {
+		'Content-Type': 'image/png',
+		'Cache-Control': 'public, max-age=300, s-maxage=300',
 	})
 })
 
