@@ -44,7 +44,7 @@ app.get('/:address', async (c) => {
 		.limit(1)
 
 	if (!market) {
-		return c.text('Market not found', 404)
+		return new Response('Market not found', { status: 404 })
 	}
 
 	const perOutcome = market.totalPerOutcome as string[]
@@ -208,11 +208,14 @@ app.get('/:address', async (c) => {
 	})
 	const png = resvg.render().asPng()
 
-	// Use c.body() so the handler's return type is consistent with c.text() above.
-	// Returning a raw Response here confuses Hono's overload inference and fails type-check.
-	return c.body(png, 200, {
-		'Content-Type': 'image/png',
-		'Cache-Control': 'public, max-age=300, s-maxage=300',
+	// Both branches return plain Response so TS can unify the handler's return
+	// type. Using c.text() or c.body() here mixes Hono's TypedResponse with
+	// plain Response and breaks overload inference.
+	return new Response(png, {
+		headers: {
+			'Content-Type': 'image/png',
+			'Cache-Control': 'public, max-age=300, s-maxage=300',
+		},
 	})
 })
 
