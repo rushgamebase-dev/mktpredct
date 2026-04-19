@@ -33,7 +33,7 @@ function formatPool(wei: string): string {
 	return ''
 }
 
-// GET /api/og/:address — generates 1200x630 PNG for Twitter/OG cards
+// GET /api/og/:address — generates 1200x630 PNG for Twitter/OG cards.
 app.get('/:address', async (c) => {
 	const address = c.req.param('address').toLowerCase()
 
@@ -208,11 +208,17 @@ app.get('/:address', async (c) => {
 	})
 	const png = resvg.render().asPng()
 
-	return new Response(png, {
-		headers: {
-			'Content-Type': 'image/png',
-			'Cache-Control': 'public, max-age=300, s-maxage=300',
-		},
+	// Convert Node Buffer -> ArrayBuffer so Hono's c.body() accepts it.
+	// Returning via c.body() keeps both branches on Hono's TypedResponse path,
+	// which avoids TS2769 overload mismatches from mixing with raw Response.
+	const pngArrayBuffer = png.buffer.slice(
+		png.byteOffset,
+		png.byteOffset + png.byteLength,
+	) as ArrayBuffer
+
+	return c.body(pngArrayBuffer, 200, {
+		'Content-Type': 'image/png',
+		'Cache-Control': 'public, max-age=300, s-maxage=300',
 	})
 })
 
