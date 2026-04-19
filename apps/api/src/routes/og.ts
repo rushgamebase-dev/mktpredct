@@ -34,10 +34,7 @@ function formatPool(wei: string): string {
 }
 
 // GET /api/og/:address — generates 1200x630 PNG for Twitter/OG cards.
-// Explicit Promise<Response> return annotation forces Hono to pick the correct
-// overload. Without it, type inference falls through to HandlerResponse = void
-// and TS2769 fires on the whole handler registration.
-app.get('/:address', async (c): Promise<Response> => {
+app.get('/:address', async (c) => {
 	const address = c.req.param('address').toLowerCase()
 
 	const [market] = await db
@@ -47,7 +44,7 @@ app.get('/:address', async (c): Promise<Response> => {
 		.limit(1)
 
 	if (!market) {
-		return new Response('Market not found', { status: 404 })
+		return c.text('Market not found', 404)
 	}
 
 	const perOutcome = market.totalPerOutcome as string[]
@@ -211,14 +208,17 @@ app.get('/:address', async (c): Promise<Response> => {
 	})
 	const png = resvg.render().asPng()
 
-	// Both branches return plain Response so TS can unify the handler's return
-	// type. Using c.text() or c.body() here mixes Hono's TypedResponse with
-	// plain Response and breaks overload inference.
-	return new Response(png, {
-		headers: {
-			'Content-Type': 'image/png',
-			'Cache-Control': 'public, max-age=300, s-maxage=300',
-		},
+	// Convert Node Buffer -> ArrayBuffer so Hono's c.body() accepts it.
+	// Returning via c.body() keeps both branches on Hono's TypedResponse path,
+	// which avoids TS2769 overload mismatches from mixing with raw Response.
+	const pngArrayBuffer = png.buffer.slice(
+		png.byteOffset,
+		png.byteOffset + png.byteLength,
+	) as ArrayBuffer
+
+	return c.body(pngArrayBuffer, 200, {
+		'Content-Type': 'image/png',
+		'Cache-Control': 'public, max-age=300, s-maxage=300',
 	})
 })
 
