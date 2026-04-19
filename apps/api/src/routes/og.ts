@@ -33,8 +33,11 @@ function formatPool(wei: string): string {
 	return ''
 }
 
-// GET /api/og/:address — generates 1200x630 PNG for Twitter/OG cards
-app.get('/:address', async (c) => {
+// GET /api/og/:address — generates 1200x630 PNG for Twitter/OG cards.
+// Explicit Promise<Response> return annotation forces Hono to pick the correct
+// overload. Without it, type inference falls through to HandlerResponse = void
+// and TS2769 fires on the whole handler registration.
+app.get('/:address', async (c): Promise<Response> => {
 	const address = c.req.param('address').toLowerCase()
 
 	const [market] = await db
