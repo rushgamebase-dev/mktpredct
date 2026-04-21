@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { eq, sql, count } from 'drizzle-orm'
+import { eq, sql, count, desc } from 'drizzle-orm'
 import { markets } from '@rush/shared/db/schema'
 import type { MarketSummary, MarketDetail, MarketsListResponse, MarketDetailResponse } from '@rush/shared'
 import { computeOdds } from '@rush/shared'
@@ -44,7 +44,7 @@ app.get('/', async (c) => {
   }
 
   const [rows, countResult] = await Promise.all([
-    query.limit(pageSize).offset(offset),
+    query.orderBy(desc(markets.createdAt)).limit(pageSize).offset(offset),
     countQuery,
   ])
 
